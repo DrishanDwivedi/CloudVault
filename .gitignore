@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+*.egg
+venv/
+.venv/
+
+# Environment
+.env
+*.db
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Storage binary data (re-creatable)
+services/data-hot/
+services/data-warm/
+services/data-archive/
+services/*.exe
+services/*.tar.gz
+
+# Mock storage
+backend/storage/mock/
+
+

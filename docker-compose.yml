@@ -1,0 +1,215 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cloudvault-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_pass
+      POSTGRES_DB: cloudvault
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - cloudvault-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cloudvault"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: cloudvault-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - cloudvault-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: cloudvault-minio
+    restart: always
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: cloudvault_admin
+      MINIO_ROOT_PASSWORD: minio_secure_password_123
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - cloudvault-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: cloudvault-seaweedfs
+    restart: always
+    ports:
+      - "9333:9333"
+      - "8888:8888"
+      - "8333:8333"
+    volumes:
+      - seaweedfs-data:/data
+    command: server -dir=/data -filer -s3 -s3.port=8333
+    networks:
+      - cloudvault-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8333/"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  scality:
+    image: scality/s3server:latest
+    container_name: cloudvault-scality
+    restart: always
+    ports:
+      - "18000:8000"
+    environment:
+      - SCALITY_ACCESS_KEY_ID=scality_admin
+      - SCALITY_SECRET_ACCESS_KEY=scality_secret_key_123
+      - S3BACKEND=file
+      - LOG_LEVEL=trace
+    volumes:
+      - scality-data:/usr/src/app/data
+    networks:
+      - cloudvault-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudvault-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_secure_pass@db:5432/cloudvault
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - MOCK_STORAGE=False
+      - MINIO_ENDPOINT=http://minio:9000
+      - SEAWEEDFS_FILER_URL=http://seaweedfs:8333
+      - SCALITY_ENDPOINT=http://scality:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
+      scality:
+        condition: service_healthy
+    networks:
+      - cloudvault-network
+
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudvault-celery-worker
+    restart: always
+    command: celery -A app.core.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_secure_pass@db:5432/cloudvault
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - MOCK_STORAGE=False
+      - MINIO_ENDPOINT=http://minio:9000
+      - SEAWEEDFS_FILER_URL=http://seaweedfs:8333
+      - SCALITY_ENDPOINT=http://scality:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - cloudvault-network
+
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudvault-celery-beat
+    restart: always
+    command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres_secure_pass@db:5432/cloudvault
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - MOCK_STORAGE=False
+      - MINIO_ENDPOINT=http://minio:9000
+      - SEAWEEDFS_FILER_URL=http://seaweedfs:8333
+      - SCALITY_ENDPOINT=http://scality:8000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - cloudvault-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudvault-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cloudvault-network
+
+networks:
+  cloudvault-network:
+    name: cloudvault-network
+    driver: bridge
+
+volumes:
+  postgres-data:
+    name: cloudvault-postgres-data
+  redis-data:
+    name: cloudvault-redis-data
+  minio-data:
+    name: cloudvault-minio-data
+  seaweedfs-data:
+    name: cloudvault-seaweedfs-data
+  scality-data:
+    name: cloudvault-scality-data
