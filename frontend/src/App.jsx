@@ -629,7 +629,6 @@ function Dashboard() {
       let startTime = Date.now()
 
       axios.post('/files/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
         cancelToken: source.token,
         onUploadProgress: (progressEvent) => {
           const loaded = progressEvent.loaded
@@ -1067,34 +1066,29 @@ function Dashboard() {
                     <span>Create Folder</span>
                   </button>
 
-                  <label className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-850/30 flex items-center gap-2 cursor-pointer transition-colors">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('file-upload-input').click()
+                      setTimeout(() => setShowNewDropdown(false), 100)
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-850/30 flex items-center gap-2 transition-colors"
+                  >
                     <Upload className="w-4 h-4 text-emerald-400" />
                     <span>Upload File</span>
-                    <input
-                      type="file"
-                      onChange={(e) => {
-                        setShowNewDropdown(false)
-                        handleFileUpload(e)
-                      }}
-                      className="hidden"
-                    />
-                  </label>
+                  </button>
 
-                  <label className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-850/30 flex items-center gap-2 cursor-pointer transition-colors">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      document.getElementById('folder-upload-input').click()
+                      setTimeout(() => setShowNewDropdown(false), 100)
+                    }}
+                    className="w-full text-left px-4 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-850/30 flex items-center gap-2 transition-colors"
+                  >
                     <FolderOpen className="w-4 h-4 text-sky-400" />
                     <span>Upload Folder</span>
-                    <input
-                      type="file"
-                      webkitdirectory="true"
-                      directory="true"
-                      multiple
-                      onChange={(e) => {
-                        setShowNewDropdown(false)
-                        handleFileUpload(e)
-                      }}
-                      className="hidden"
-                    />
-                  </label>
+                  </button>
                 </div>
               )}
             </div>
@@ -2051,6 +2045,23 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Hidden File/Folder Inputs for Uploads */}
+      <input
+        id="file-upload-input"
+        type="file"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+      <input
+        id="folder-upload-input"
+        type="file"
+        webkitdirectory="true"
+        directory="true"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+      />
 
       {/* --- MODALS SECTION --- */}
 

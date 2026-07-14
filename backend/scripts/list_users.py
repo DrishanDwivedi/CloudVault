@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-p=Path(__file__).parent / 'cloudvault.db'
+p=Path(__file__).parent.parent / 'cloudvault.db'
 if not p.exists():
     print('DB not found at', p)
     raise SystemExit(0)

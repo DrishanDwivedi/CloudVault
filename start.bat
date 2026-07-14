@@ -5,6 +5,25 @@ echo             CLOUDVAULT SYSTEM LAUNCHER
 echo ===================================================
 echo.
 
+set "APP_DIR=%~dp0"
+set "VENV_PY=%APP_DIR%.venv\Scripts\python.exe"
+set "BACKEND_VENV_PY=..\.venv\Scripts\python.exe"
+set "SERVICE_DIR=%APP_DIR%services"
+
+if not exist "%VENV_PY%" if exist "%APP_DIR%venv\Scripts\python.exe" (
+    set "VENV_PY=%APP_DIR%venv\Scripts\python.exe"
+    set "BACKEND_VENV_PY=..\venv\Scripts\python.exe"
+)
+
+if not exist "%VENV_PY%" if exist "%APP_DIR%..\venv\Scripts\python.exe" (
+    set "VENV_PY=%APP_DIR%..\venv\Scripts\python.exe"
+    set "BACKEND_VENV_PY=..\..\venv\Scripts\python.exe"
+)
+
+if not exist "%SERVICE_DIR%\minio.exe" if exist "%APP_DIR%..\services\minio.exe" (
+    set "SERVICE_DIR=%APP_DIR%..\services"
+)
+
 REM ==========================================
 REM PRE-FLIGHT CHECKS
 REM ==========================================
@@ -14,42 +33,49 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9000 :9001 :9010 :9011 :180
     taskkill /F /PID %%a >nul 2>&1
 )
 timeout /t 2 /nobreak >nul
-if not exist "venv\Scripts\python.exe" (
+if not exist "%VENV_PY%" (
     echo [ERROR] Virtual environment 'venv' not found.
     echo Please run the initial setup commands first.
     pause
     exit /b 1
 )
 
-if not exist "services\minio.exe" (
+if not exist "%SERVICE_DIR%\minio.exe" (
     echo [ERROR] services\minio.exe not found!
     echo Please run setup_services.bat first to download storage binaries.
     pause
     exit /b 1
 )
 
-if not exist "services\data-hot"     mkdir services\data-hot
-if not exist "services\data-warm"    mkdir services\data-warm
+if not exist "%APP_DIR%frontend\node_modules\.bin\vite.cmd" (
+    echo [ERROR] Frontend dependencies are not installed.
+    echo Please run: cd /d "%APP_DIR%frontend" ^&^& npm install
+    pause
+    exit /b 1
+)
+
+if not exist "%SERVICE_DIR%\data-hot"     mkdir "%SERVICE_DIR%\data-hot"
+if not exist "%SERVICE_DIR%\data-warm"    mkdir "%SERVICE_DIR%\data-warm"
 
 REM ==========================================
 REM 1. START MINIO - HOT STORAGE (port 9000)
 REM ==========================================
 echo [INFO] Starting MinIO - Hot Storage (port 9000, UI: 9001)...
-start "MinIO Hot Storage [port 9000]" cmd /k "set MINIO_ROOT_USER=cloudvault_admin&& set MINIO_ROOT_PASSWORD=minio_secure_password_123&& services\minio.exe server services\data-hot --address :9000 --console-address :9001"
+start "MinIO Hot Storage [port 9000]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=cloudvault_admin&& set MINIO_ROOT_PASSWORD=minio_secure_password_123&& minio.exe server data-hot --address :9000 --console-address :9001"
 
 REM ==========================================
 REM 2. START SCALITY S3 SERVER - ARCHIVE STORAGE (port 18000)
 REM ==========================================
-if not exist "services\data-archive" mkdir services\data-archive
+if not exist "%SERVICE_DIR%\data-archive" mkdir "%SERVICE_DIR%\data-archive"
 echo [INFO] Starting Scality S3 Server Emulator (MinIO on port 18000)...
-start "Scality S3 Server Emulator [port 18000]" cmd /k "set MINIO_ROOT_USER=scality_admin&& set MINIO_ROOT_PASSWORD=scality_secret_key_123&& services\minio.exe server services\data-archive --address :18000 --console-address :18001"
+start "Scality S3 Server Emulator [port 18000]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=scality_admin&& set MINIO_ROOT_PASSWORD=scality_secret_key_123&& minio.exe server data-archive --address :18000 --console-address :18001"
 
 REM ==========================================
 REM 3. START SEAWEEDFS - WARM STORAGE (port 8333)
 REM ==========================================
-if exist "services\weed.exe" (
+if exist "%SERVICE_DIR%\weed.exe" (
     echo [INFO] Starting SeaweedFS - Warm Storage on S3 port 8333...
-    start "SeaweedFS Warm Storage [port 8333]" cmd /k "services\weed.exe server -s3 -dir=services\data-warm -master.dir=services\data-warm -s3.port=8333 -master.volumeSizeLimitMB=128"
+    start "SeaweedFS Warm Storage [port 8333]" /D "%SERVICE_DIR%" cmd /k "weed.exe server -s3 -dir=data-warm -master.dir=data-warm -s3.port=8333 -master.volumeSizeLimitMB=128 -volume.max=100"
 ) else (
     echo [WARN] services\weed.exe not found - Warm storage will use fallback mock.
     echo        Run setup_services.bat to download SeaweedFS.
@@ -65,19 +91,19 @@ timeout /t 8 /nobreak >nul
 REM ==========================================
 REM 5. CREATE BUCKETS via mc.exe (if available)
 REM ==========================================
-if exist "services\mc.exe" (
+if exist "%SERVICE_DIR%\mc.exe" (
     echo [INFO] Configuring storage buckets...
     
     REM Register MinIO Hot with mc
-    services\mc.exe alias set cv-hot http://localhost:9000 cloudvault_admin minio_secure_password_123 >nul 2>&1
+    "%SERVICE_DIR%\mc.exe" alias set cv-hot http://localhost:9000 cloudvault_admin minio_secure_password_123 >nul 2>&1
     REM Create the hot bucket
-    services\mc.exe mb cv-hot/cloudvault-hot >nul 2>&1
+    "%SERVICE_DIR%\mc.exe" mb cv-hot/cloudvault-hot >nul 2>&1
     echo [INFO]   Hot bucket     'cloudvault-hot'      ready.
     
     REM Register Scality with mc
-    services\mc.exe alias set cv-archive http://localhost:18000 scality_admin scality_secret_key_123 >nul 2>&1
+    "%SERVICE_DIR%\mc.exe" alias set cv-archive http://localhost:18000 scality_admin scality_secret_key_123 >nul 2>&1
     REM Create the archive bucket
-    services\mc.exe mb cv-archive/cloudvault-archive >nul 2>&1
+    "%SERVICE_DIR%\mc.exe" mb cv-archive/cloudvault-archive >nul 2>&1
     echo [INFO]   Archive bucket  'cloudvault-archive'   ready.
 
     REM Create SeaweedFS warm bucket via filer HTTP API
@@ -96,7 +122,7 @@ REM 6. START BACKEND (FastAPI)
 REM ==========================================
 echo.
 echo [INFO] Starting Backend Server (FastAPI on port 8000)...
-start "CloudVault Backend [port 8000]" cmd /k "cd backend && ..\venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+start "CloudVault Backend [port 8000]" /D "%APP_DIR%backend" cmd /k "%BACKEND_VENV_PY% -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 
 REM Wait a moment for backend to start
 timeout /t 3 /nobreak >nul
@@ -105,7 +131,7 @@ REM ==========================================
 REM 7. START FRONTEND (Vite)
 REM ==========================================
 echo [INFO] Starting Frontend Dev Server (Vite on port 5173)...
-start "CloudVault Frontend [port 5173]" cmd /k "cd frontend && npm run dev"
+start "CloudVault Frontend [port 5173]" /D "%APP_DIR%frontend" cmd /k "npm run dev"
 
 REM ==========================================
 REM SUMMARY

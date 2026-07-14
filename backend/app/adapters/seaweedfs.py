@@ -29,6 +29,15 @@ class SeaweedFSAdapter(StorageAdapter):
         return os.path.join(bucket_dir, file_name)
 
     def upload(self, file_data: bytes, file_name: str, bucket_name: str) -> bool:
+        if settings.MOCK_STORAGE:
+            try:
+                path = self._mock_path(bucket_name, file_name)
+                with open(path, "wb") as f:
+                    f.write(file_data)
+                return True
+            except Exception:
+                return False
+
         try:
             s3 = self._get_s3_client()
             try:
@@ -39,32 +48,22 @@ class SeaweedFSAdapter(StorageAdapter):
             s3.put_object(Bucket=bucket_name, Key=file_name, Body=file_data)
             return True
         except Exception:
-            try:
-                path = self._mock_path(bucket_name, file_name)
-                with open(path, "wb") as f:
-                    f.write(file_data)
-                return True
-            except Exception:
-                return False
+            return False
 
     def download(self, file_name: str, bucket_name: str) -> bytes:
-        try:
-            s3 = self._get_s3_client()
-            response = s3.get_object(Bucket=bucket_name, Key=file_name)
-            return response["Body"].read()
-        except Exception:
+        if settings.MOCK_STORAGE:
             path = self._mock_path(bucket_name, file_name)
             if os.path.exists(path):
                 with open(path, "rb") as f:
                     return f.read()
-            raise FileNotFoundError(f"File {file_name} not found in SeaweedFS bucket {bucket_name}")
+            raise FileNotFoundError(f"File {file_name} not found in mock storage")
+
+        s3 = self._get_s3_client()
+        response = s3.get_object(Bucket=bucket_name, Key=file_name)
+        return response["Body"].read()
 
     def delete(self, file_name: str, bucket_name: str) -> bool:
-        try:
-            s3 = self._get_s3_client()
-            s3.delete_object(Bucket=bucket_name, Key=file_name)
-            return True
-        except Exception:
+        if settings.MOCK_STORAGE:
             try:
                 path = self._mock_path(bucket_name, file_name)
                 if os.path.exists(path):
@@ -73,11 +72,22 @@ class SeaweedFSAdapter(StorageAdapter):
             except Exception:
                 return False
 
+        try:
+            s3 = self._get_s3_client()
+            s3.delete_object(Bucket=bucket_name, Key=file_name)
+            return True
+        except Exception:
+            return False
+
     def exists(self, file_name: str, bucket_name: str) -> bool:
+        if settings.MOCK_STORAGE:
+            path = self._mock_path(bucket_name, file_name)
+            return os.path.exists(path)
+
         try:
             s3 = self._get_s3_client()
             s3.head_object(Bucket=bucket_name, Key=file_name)
             return True
         except Exception:
-            path = self._mock_path(bucket_name, file_name)
-            return os.path.exists(path)
+            return False
+
