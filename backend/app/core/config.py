@@ -3,6 +3,18 @@ from typing import List, Union
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+def _find_env_file() -> str:
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    for _ in range(5):
+        pot_env = os.path.join(current_dir, ".env")
+        if os.path.exists(pot_env):
+            return pot_env
+        parent = os.path.dirname(current_dir)
+        if parent == current_dir:
+            break
+        current_dir = parent
+    return ".env"
+
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "CloudVault"
@@ -68,10 +80,11 @@ class Settings(BaseSettings):
     SCALITY_BUCKET_NAME: str = "cloudvault-archive"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_find_env_file(),
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore"
     )
 
 settings = Settings()
+

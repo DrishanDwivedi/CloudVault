@@ -16,6 +16,7 @@ venv/
 node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/.npm-cache/
 
 # IDE
 .vscode/
@@ -31,10 +32,10 @@ Thumbs.db
 services/data-hot/
 services/data-warm/
 services/data-archive/
+services/seaweedfs/
 services/*.exe
 services/*.tar.gz
 
 # Mock storage
+storage/
 backend/storage/mock/
-
-

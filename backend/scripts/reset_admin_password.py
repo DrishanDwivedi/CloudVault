@@ -5,7 +5,7 @@ import string
 from pathlib import Path
 
 # Configuration
-DB_PATH = Path(__file__).parent / 'cloudvault.db'
+DB_PATH = Path(__file__).parent.parent / 'cloudvault.db'
 TARGET_EMAIL = 'drish@example.com'  # admin account to reset
 
 # Generate a secure random password
