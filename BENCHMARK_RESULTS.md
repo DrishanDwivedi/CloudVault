@@ -71,3 +71,18 @@ Complete pipeline: Source Read $\rightarrow$ Destination Write $\rightarrow$ SHA
 | **Warm $\rightarrow$ Archive** (SeaweedFS $\rightarrow$ Garage S3) | 1 MB | 999.03 | 822.00 | 1,577.35 | 1.00 |
 | **Warm $\rightarrow$ Archive** (SeaweedFS $\rightarrow$ Garage S3) | 10 MB | 1,481.33 | 1,502.76 | 2,153.22 | 6.75 |
 | **Warm $\rightarrow$ Archive** (SeaweedFS $\rightarrow$ Garage S3) | 100 MB | 2,474.27 | 2,437.92 | 2,863.15 | 40.42 |
+
+---
+
+## 5. Worker Concurrency Scaling (Batch Migration Throughput)
+
+Batch migration workload: **16 files $\times$ 5 MB** (80 MB total payload) migrating Hot (MinIO) $\rightarrow$ Warm (SeaweedFS) across worker thread counts $W \in [1, 2, 4, 8]$.
+
+| Concurrent Workers ($W$) | Total Batch Duration | Avg Latency / File | Aggregate Throughput | Speedup Factor | Parallel Efficiency | Success Rate |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **1 Worker** | 8.46 s | 528.7 ms | 9.46 MiB/s | **1.00x** | **100.0%** | 16/16 (100%) |
+| **2 Workers** | 10.17 s | 635.8 ms | 7.86 MiB/s | **0.83x** | **41.6%** | 16/16 (100%) |
+| **4 Workers** | 9.26 s | 578.9 ms | 8.64 MiB/s | **0.91x** | **22.8%** | 16/16 (100%) |
+| **8 Workers** | 9.45 s | 590.9 ms | 8.46 MiB/s | **0.89x** | **11.2%** | 16/16 (100%) |
+
+*Key Findings*: Under single-host Docker networking and disk I/O constraints, aggregate storage throughput stabilizes around 8.5–9.5 MiB/s across all concurrency tiers with 100% data integrity and zero race-condition lock collisions.
