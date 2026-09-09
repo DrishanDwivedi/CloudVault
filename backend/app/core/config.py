@@ -73,11 +73,11 @@ class Settings(BaseSettings):
     SEAWEEDFS_FILER_URL: str = "http://localhost:8333"
     SEAWEEDFS_BUCKET_NAME: str = "cloudvault-warm"
 
-    # Scality S3 Server (Archive Storage)
-    SCALITY_ENDPOINT: str = "http://localhost:18000"
-    SCALITY_ACCESS_KEY_ID: str = "scality_admin"
-    SCALITY_SECRET_ACCESS_KEY: str = "scality_secret_key_123"
-    SCALITY_BUCKET_NAME: str = "cloudvault-archive"
+    # Garage S3 (Archive Storage)
+    GARAGE_ENDPOINT: str = "http://localhost:3900"
+    GARAGE_ACCESS_KEY_ID: str = "GK000000000000000000000001"
+    GARAGE_SECRET_ACCESS_KEY: str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    GARAGE_BUCKET_NAME: str = "cloudvault-archive"
 
     model_config = SettingsConfigDict(
         env_file=_find_env_file(),

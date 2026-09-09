@@ -64,11 +64,11 @@ echo [INFO] Starting MinIO - Hot Storage (port 9000, UI: 9001)...
 start "MinIO Hot Storage [port 9000]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=cloudvault_admin&& set MINIO_ROOT_PASSWORD=minio_secure_password_123&& minio.exe server data-hot --address :9000 --console-address :9001"
 
 REM ==========================================
-REM 2. START SCALITY S3 SERVER - ARCHIVE STORAGE (port 18000)
+REM 2. START GARAGE S3 / ARCHIVE STORAGE (port 3900)
 REM ==========================================
 if not exist "%SERVICE_DIR%\data-archive" mkdir "%SERVICE_DIR%\data-archive"
-echo [INFO] Starting Scality S3 Server Emulator (MinIO on port 18000)...
-start "Scality S3 Server Emulator [port 18000]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=scality_admin&& set MINIO_ROOT_PASSWORD=scality_secret_key_123&& minio.exe server data-archive --address :18000 --console-address :18001"
+echo [INFO] Starting Garage S3 Server / Archive Storage (port 3900)...
+start "Garage S3 Server Emulator [port 3900]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=garage_admin&& set MINIO_ROOT_PASSWORD=garage_secret_key_123&& minio.exe server data-archive --address :3900 --console-address :3901"
 
 REM ==========================================
 REM 3. START SEAWEEDFS - WARM STORAGE (port 8333)
@@ -100,8 +100,8 @@ if exist "%SERVICE_DIR%\mc.exe" (
     "%SERVICE_DIR%\mc.exe" mb cv-hot/cloudvault-hot >nul 2>&1
     echo [INFO]   Hot bucket     'cloudvault-hot'      ready.
     
-    REM Register Scality with mc
-    "%SERVICE_DIR%\mc.exe" alias set cv-archive http://localhost:18000 scality_admin scality_secret_key_123 >nul 2>&1
+    REM Register Garage Archive with mc
+    "%SERVICE_DIR%\mc.exe" alias set cv-archive http://localhost:3900 garage_admin garage_secret_key_123 >nul 2>&1
     REM Create the archive bucket
     "%SERVICE_DIR%\mc.exe" mb cv-archive/cloudvault-archive >nul 2>&1
     echo [INFO]   Archive bucket  'cloudvault-archive'   ready.
@@ -146,7 +146,7 @@ echo  - Hot     (MinIO): http://localhost:9000  (S3 API)
 echo  - Hot UI         : http://localhost:9001  (Web Console)
 echo  - Warm (SeaweedFS): http://localhost:8333  (S3 API)
 echo  - Warm UI        : http://localhost:8888  (Filer Web UI)
-echo  - Archive (Scality S3): http://localhost:18000  (S3 API)
+echo  - Archive (Garage S3): http://localhost:3900  (S3 API)
 echo.
 echo  APP SERVICES:
 echo  - Backend       : http://127.0.0.1:8000
@@ -155,7 +155,7 @@ echo  - API Docs      : http://127.0.0.1:8000/docs
 echo.
 echo  CREDENTIALS:
 echo  - Hot (MinIO)  : cloudvault_admin / minio_secure_password_123
-echo  - Archive      : scality_admin / scality_secret_key_123
+echo  - Archive      : garage_admin / garage_secret_key_123
 echo.
 echo ---------------------------------------------------
 echo  Close any cmd window to stop that service.

@@ -3,7 +3,7 @@ from typing import Dict
 from app.adapters.base import StorageAdapter
 from app.adapters.minio import MinIOAdapter
 from app.adapters.seaweedfs import SeaweedFSAdapter
-from app.adapters.scality import ScalityAdapter
+from app.adapters.garage import GarageAdapter
 from app.core.config import settings
 
 class StorageService:
@@ -11,13 +11,13 @@ class StorageService:
         self.adapters: Dict[str, StorageAdapter] = {
             "hot": MinIOAdapter(),
             "warm": SeaweedFSAdapter(),
-            "archive": ScalityAdapter()
+            "archive": GarageAdapter()
         }
         
         self.buckets: Dict[str, str] = {
             "hot": settings.MINIO_BUCKET_NAME,
             "warm": settings.SEAWEEDFS_BUCKET_NAME,
-            "archive": settings.SCALITY_BUCKET_NAME
+            "archive": settings.GARAGE_BUCKET_NAME
         }
 
     def _get_adapter_and_bucket(self, tier: str):

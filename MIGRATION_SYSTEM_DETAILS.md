@@ -52,11 +52,11 @@ The CloudVault platform implements a sophisticated **automatic lifecycle managem
 │                                                                   │
 │  ┌─────────────────┐  ┌──────────────────┐  ┌─────────────────┐ │
 │  │   Hot Tier      │  │  Warm Tier       │  │ Archive Tier    │ │
-│  │   (MinIO)       │  │  (SeaweedFS)     │  │ (Scality S3)    │ │
+│  │   (MinIO)       │  │  (SeaweedFS)     │  │ (Garage S3)     │ │
 │  │  Responsive     │  │  Balanced        │  │ Long-term       │ │
 │  │  Expensive      │  │  Cost-effective  │  │ Cheap storage   │ │
 │  │                 │  │                  │  │                 │ │
-│  │ Bucket: hot-v1  │  │ Bucket: warm-v1  │  │ Bucket: arch-v1 │ │
+│  │ Bucket: hot     │  │ Bucket: warm     │  │ Bucket: archive │ │
 │  └─────────────────┘  └──────────────────┘  └─────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -78,10 +78,10 @@ The system comes with two default policies:
 
 #### Policy 2: Warm → Archive
 - **Source Tier:** Warm (SeaweedFS)
-- **Destination Tier:** Archive (Scality S3)
-- **Duration:** 60 days (from warm entry, so 90 days from upload)
+- **Destination Tier:** Archive (Garage S3)
+- **Duration (duration_days):** 90 days (measured from file upload date; i.e., 60 days after entering warm tier)
 - **Active:** Yes
-- **Trigger:** When file age in warm > 60 days
+- **Trigger:** When file age > 90 days total (in warm tier)
 
 ### Policy Management
 
@@ -136,14 +136,14 @@ Day 92: Lifecycle sweep runs again
         - Identifies files in "warm" tier with age > 60 days
         - Triggers migration to Archive tier
 
-Day 93: Migration completes
+Day 140: Migration completes
         - Downloaded from SeaweedFS (Warm)
-        - Uploaded to Scality S3 (Archive)
+        - Uploaded to Garage S3 (Archive)
         - Checksum verified
         - Deleted from SeaweedFS
         - File updated:
           * current_tier = "archive"
-          * current_backend = "scality"
+          * current_backend = "garage"
           * next_migration_date = NULL (final tier)
           * migration_count = 2
         - Migration history recorded
@@ -172,7 +172,7 @@ CREATE TABLE files (
     name STRING,
     size INTEGER,
     checksum STRING,
-    current_backend STRING,       -- "minio", "seaweedfs", "scality"
+    current_backend STRING,       -- "minio", "seaweedfs", "garage"
     current_tier STRING,          -- "hot", "warm", "archive"
     upload_date DATETIME,         -- When file was uploaded
     last_access_date DATETIME,    -- Updated on each download
@@ -188,7 +188,7 @@ CREATE TABLE files (
 CREATE TABLE migration_history (
     id INTEGER PRIMARY KEY,
     file_id INTEGER REFERENCES files(id),
-    source_backend STRING,  -- "minio", "seaweedfs", "scality"
+    source_backend STRING,  -- "minio", "seaweedfs", "garage"
     dest_backend STRING,
     source_tier STRING,     -- "hot", "warm", "archive"
     dest_tier STRING,
@@ -319,7 +319,7 @@ class MinIOAdapter:
         )
 ```
 
-Similar implementations for SeaweedFS (Warm) and Scality S3 (Archive).
+Similar implementations for SeaweedFS (Warm) and Garage S3 (Archive).
 
 ---
 
@@ -404,13 +404,10 @@ CELERY_TASK_ALWAYS_EAGER=True  # For development
 # Storage Endpoints
 MINIO_ENDPOINT=http://localhost:9000
 SEAWEEDFS_FILER_URL=http://localhost:8888
-SCALITY_ENDPOINT=http://localhost:18000
-
-# Credentials
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-SCALITY_ACCESS_KEY_ID=accessKey1
-SCALITY_SECRET_ACCESS_KEY=verySecretKey1
+GARAGE_ENDPOINT=http://localhost:3900
+GARAGE_ACCESS_KEY_ID=garage_admin
+GARAGE_SECRET_ACCESS_KEY=garage_secret_key_123
+GARAGE_BUCKET_NAME=cloudvault-archive
 ```
 
 ---

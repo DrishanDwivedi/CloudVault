@@ -7,10 +7,16 @@ dist/
 *.egg
 venv/
 .venv/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Environment
+# Environment & Databases
 .env
 *.db
+*.db.backup
+*.sqlite
+*.sqlite3
 
 # Node
 node_modules/
@@ -35,7 +41,9 @@ services/data-archive/
 services/seaweedfs/
 services/*.exe
 services/*.tar.gz
+services/weed_temp/
 
 # Mock storage
 storage/
 backend/storage/mock/
+*.log

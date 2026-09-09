@@ -17,7 +17,7 @@ class File(Base):
     mime_type = Column(String, nullable=True)
     size = Column(BigInteger, nullable=False)
     checksum = Column(String, nullable=False)
-    current_backend = Column(String, default="minio", nullable=False) # "minio", "seaweedfs", "scality"
+    current_backend = Column(String, default="minio", nullable=False) # "minio", "seaweedfs", "garage"
     current_tier = Column(String, default="hot", nullable=False)      # "hot", "warm", "archive"
     upload_date = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     last_access_date = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)

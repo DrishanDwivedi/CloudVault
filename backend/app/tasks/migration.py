@@ -11,28 +11,29 @@ def migrate_file_task(file_id: int, dest_tier: str) -> bool:
     print(f"[INFO] Celery starting migration for File ID {file_id} to tier {dest_tier}")
     db = SessionLocal()
     try:
-        # 1. Fetch file record
+        # 1. Atomic conditional update: lock file status only if currently active
+        rows_updated = db.query(File).filter(
+            File.id == file_id,
+            File.status == "active"
+        ).update({"status": "migrating"}, synchronize_session=False)
+        db.commit()
+
+        if rows_updated == 0:
+            print(f"[WARNING] File ID {file_id} could not be locked for migration (not active or claimed by another worker). Aborting.")
+            return False
+
+        # 2. Fetch fresh file record after acquiring lock
         file = db.query(File).filter(File.id == file_id).first()
         if not file:
             print(f"[ERROR] File ID {file_id} not found in database.")
             return False
-            
-        if file.status == "deleted":
-            print(f"[WARNING] File ID {file_id} is deleted. Aborting migration.")
-            return False
-            
-        if file.status == "migrating":
-            print(f"[WARNING] File ID {file_id} is already undergoing migration. Aborting concurrent attempt.")
-            return False
-            
+
         source_tier = file.current_tier
         if source_tier.lower() == dest_tier.lower():
-            print(f"[INFO] File ID {file_id} is already in the target tier {dest_tier}. No action needed.")
+            print(f"[INFO] File ID {file_id} is already in the target tier {dest_tier}. Reverting lock.")
+            file.status = "active"
+            db.commit()
             return True
-            
-        # 2. Lock file status
-        file.status = "migrating"
-        db.commit()
         
         # 3. Create Migration history entry
         # Map dest_tier to backend
@@ -40,7 +41,7 @@ def migrate_file_task(file_id: int, dest_tier: str) -> bool:
         if dest_tier == "warm":
             dest_backend = "seaweedfs"
         elif dest_tier == "archive":
-            dest_backend = "scality"
+            dest_backend = "garage"
             
         migration_entry = create_migration_entry(
             db,
@@ -103,12 +104,34 @@ def migrate_file_task(file_id: int, dest_tier: str) -> bool:
     finally:
         db.close()
 
+def recover_stalled_migrations(db: SessionLocal, timeout_minutes: int = 15) -> int:
+    """
+    Recovers any files stuck in 'migrating' status (e.g. if a worker died/crashed mid-task).
+    Resets status back to 'active' so subsequent sweeps can retry.
+    """
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=timeout_minutes)
+    stalled_files = db.query(File).filter(
+        File.status == "migrating",
+        File.last_access_date <= cutoff
+    ).all()
+    recovered = 0
+    for f in stalled_files:
+        print(f"[WARNING] Recovering stalled file ID {f.id} (was stuck in 'migrating' state). Reverting to 'active'.")
+        f.status = "active"
+        recovered += 1
+    if recovered > 0:
+        db.commit()
+    return recovered
+
 @celery_app.task(name="app.tasks.migration.apply_lifecycle_policies_task")
 def apply_lifecycle_policies_task() -> int:
     print("[INFO] Evaluating Active Lifecycle Policies against stored files...")
     db = SessionLocal()
     migrations_triggered = 0
     try:
+        # 0. Recover any stalled migrations from crashed workers
+        recover_stalled_migrations(db, timeout_minutes=15)
+
         # Get active policies
         policies = db.query(LifecyclePolicy).filter(LifecyclePolicy.is_active == True).all()
         

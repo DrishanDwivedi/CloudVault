@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -38,7 +36,7 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
     container_name: cloudvault-minio
     restart: always
     ports:
@@ -59,7 +57,7 @@ services:
       retries: 5
 
   seaweedfs:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:3.59
     container_name: cloudvault-seaweedfs
     restart: always
     ports:
@@ -77,26 +75,39 @@ services:
       timeout: 5s
       retries: 5
 
-  scality:
-    image: scality/s3server:latest
-    container_name: cloudvault-scality
+  garage:
+    image: dxflrs/garage:v1.0.1
+    container_name: cloudvault-garage
     restart: always
     ports:
-      - "18000:8000"
-    environment:
-      - SCALITY_ACCESS_KEY_ID=scality_admin
-      - SCALITY_SECRET_ACCESS_KEY=scality_secret_key_123
-      - S3BACKEND=file
-      - LOG_LEVEL=trace
+      - "3900:3900"
+      - "3901:3901"
+      - "3902:3902"
+      - "3903:3903"
     volumes:
-      - scality-data:/usr/src/app/data
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
     networks:
       - cloudvault-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
-      interval: 10s
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 5
+
+  garage-init:
+    image: dxflrs/garage:v1.0.1
+    container_name: cloudvault-garage-init
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - ./docker/garage/init.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+    depends_on:
+      garage:
+        condition: service_healthy
+    networks:
+      - cloudvault-network
 
   backend:
     build:
@@ -115,7 +126,10 @@ services:
       - MOCK_STORAGE=False
       - MINIO_ENDPOINT=http://minio:9000
       - SEAWEEDFS_FILER_URL=http://seaweedfs:8333
-      - SCALITY_ENDPOINT=http://scality:8000
+      - GARAGE_ENDPOINT=http://garage:3900
+      - GARAGE_ACCESS_KEY_ID=GK000000000000000000000001
+      - GARAGE_SECRET_ACCESS_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - GARAGE_BUCKET_NAME=cloudvault-archive
     depends_on:
       db:
         condition: service_healthy
@@ -125,7 +139,7 @@ services:
         condition: service_healthy
       seaweedfs:
         condition: service_healthy
-      scality:
+      garage:
         condition: service_healthy
     networks:
       - cloudvault-network
@@ -146,7 +160,10 @@ services:
       - MOCK_STORAGE=False
       - MINIO_ENDPOINT=http://minio:9000
       - SEAWEEDFS_FILER_URL=http://seaweedfs:8333
-      - SCALITY_ENDPOINT=http://scality:8000
+      - GARAGE_ENDPOINT=http://garage:3900
+      - GARAGE_ACCESS_KEY_ID=GK000000000000000000000001
+      - GARAGE_SECRET_ACCESS_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - GARAGE_BUCKET_NAME=cloudvault-archive
     depends_on:
       db:
         condition: service_healthy
@@ -173,7 +190,10 @@ services:
       - MOCK_STORAGE=False
       - MINIO_ENDPOINT=http://minio:9000
       - SEAWEEDFS_FILER_URL=http://seaweedfs:8333
-      - SCALITY_ENDPOINT=http://scality:8000
+      - GARAGE_ENDPOINT=http://garage:3900
+      - GARAGE_ACCESS_KEY_ID=GK000000000000000000000001
+      - GARAGE_SECRET_ACCESS_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      - GARAGE_BUCKET_NAME=cloudvault-archive
     depends_on:
       db:
         condition: service_healthy
@@ -211,5 +231,7 @@ volumes:
     name: cloudvault-minio-data
   seaweedfs-data:
     name: cloudvault-seaweedfs-data
-  scality-data:
-    name: cloudvault-scality-data
+  garage-meta:
+    name: cloudvault-garage-meta
+  garage-data:
+    name: cloudvault-garage-data

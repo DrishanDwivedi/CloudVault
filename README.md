@@ -8,9 +8,9 @@ Multi-tier cloud storage platform with automated lifecycle-based file migration 
 |---------|---------------|----------------------------|
 | Hot     | MinIO         | Frequently accessed files  |
 | Warm    | SeaweedFS     | Infrequently accessed      |
-| Archive | Scality S3 Server | Long-term cold storage     |
-
+| Archive | Garage S3     | Long-term cold storage     |
 ```
+
 Frontend (React + Vite) ──► Backend (FastAPI) ──► Storage Adapters
                                 │
                           ┌─────┴─────┐
@@ -66,7 +66,7 @@ cd frontend && npm run dev
 | API Docs           | http://localhost:8000/docs   |
 | MinIO Hot (UI)     | http://localhost:9001        |
 | SeaweedFS (UI)     | http://localhost:8888        |
-| Scality Archive    | http://localhost:18000       |
+| Garage Archive     | http://localhost:3900        |
 
 ## Docker Deployment
 
@@ -74,14 +74,14 @@ cd frontend && npm run dev
 docker compose up -d
 ```
 
-This starts all services: PostgreSQL, Redis, MinIO, SeaweedFS, Scality S3 Server, Backend, Celery workers, and Frontend.
+This starts all services: PostgreSQL, Redis, MinIO, SeaweedFS, Garage S3, Backend, Celery workers, and Frontend.
 
 ## Project Structure
 
 ```
 backend/
   app/
-    adapters/     # Storage backends (MinIO, SeaweedFS, Scality S3)
+    adapters/     # Storage backends (MinIO, SeaweedFS, Garage S3)
     api/v1/       # REST endpoints (auth, files, folders, admin)
     core/         # Config, DB, security, Celery
     crud/         # Database operations
@@ -123,6 +123,6 @@ Files automatically migrate between tiers based on age:
 
 - **Hot (MinIO)** — files uploaded here first
 - **Warm (SeaweedFS)** — after 30 days (configurable)
-- **Archive (Scality S3 Server)** — after 90 days (configurable)
+- **Archive (Garage S3)** — after 90 days (configurable)
 
 Admins can configure durations and trigger manual sweeps from the dashboard.

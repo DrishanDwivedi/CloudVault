@@ -4,12 +4,16 @@ from botocore.config import Config
 from app.adapters.base import StorageAdapter
 from app.core.config import settings
 
-class ScalityAdapter(StorageAdapter):
+class GarageAdapter(StorageAdapter):
+    """
+    Storage adapter for Garage S3 (Archive Tier).
+    Garage is an open-source, lightweight distributed object store designed for geo-distributed setups.
+    """
     def __init__(self):
-        self.endpoint = settings.SCALITY_ENDPOINT
-        self.access_key = settings.SCALITY_ACCESS_KEY_ID
-        self.secret_key = settings.SCALITY_SECRET_ACCESS_KEY
-        self.mock_dir = os.path.join(settings.MOCK_STORAGE_DIR, "scality")
+        self.endpoint = settings.GARAGE_ENDPOINT
+        self.access_key = settings.GARAGE_ACCESS_KEY_ID
+        self.secret_key = settings.GARAGE_SECRET_ACCESS_KEY
+        self.mock_dir = os.path.join(settings.MOCK_STORAGE_DIR, "garage")
         os.makedirs(self.mock_dir, exist_ok=True)
 
     def _get_s3_client(self):
@@ -22,7 +26,7 @@ class ScalityAdapter(StorageAdapter):
             aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key,
             config=Config(signature_version="s3v4", connect_timeout=2.0, read_timeout=5.0, retries={"max_attempts": 1}),
-            region_name="us-east-1"
+            region_name="garage"
         )
 
     def _mock_path(self, bucket_name: str, file_name: str) -> str:
@@ -92,4 +96,3 @@ class ScalityAdapter(StorageAdapter):
             return True
         except Exception:
             return False
-

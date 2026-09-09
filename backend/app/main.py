@@ -124,7 +124,7 @@ def health_check(db: Session = Depends(get_db)):
             "redis": "unknown",
             "minio": "unknown",
             "seaweedfs": "unknown",
-            "scality": "unknown"
+            "garage": "unknown"
         }
     }
 
@@ -193,18 +193,18 @@ def health_check(db: Session = Depends(get_db)):
         s3.list_buckets()
     check_tier("seaweedfs", check_seaweedfs)
 
-    # 5. Test Scality S3 Server Connection
-    def check_scality():
+    # 5. Test Garage S3 Connection
+    def check_garage():
         s3 = boto3.client(
             "s3",
-            endpoint_url=settings.SCALITY_ENDPOINT,
-            aws_access_key_id=settings.SCALITY_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.SCALITY_SECRET_ACCESS_KEY,
+            endpoint_url=settings.GARAGE_ENDPOINT,
+            aws_access_key_id=settings.GARAGE_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.GARAGE_SECRET_ACCESS_KEY,
             config=Config(signature_version="s3v4", connect_timeout=0.5, read_timeout=0.5, retries={"max_attempts": 0}),
-            region_name="us-east-1"
+            region_name="garage"
         )
         s3.list_buckets()
-    check_tier("scality", check_scality)
+    check_tier("garage", check_garage)
 
     if health_status["status"] == "unhealthy":
         raise HTTPException(status_code=500, detail=health_status)
