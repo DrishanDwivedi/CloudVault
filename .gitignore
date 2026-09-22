@@ -14,6 +14,8 @@ htmlcov/
 # Environment & Databases
 .env
 *.db
+*.db-wal
+*.db-shm
 *.db.backup
 *.sqlite
 *.sqlite3
