@@ -61,8 +61,14 @@ def create_file_record(
     owner_id: int,
     folder_id: Optional[int] = None
 ) -> File:
-    # Set default next migration date to 30 days from now (Hot storage duration)
-    next_migration = datetime.datetime.utcnow() + datetime.timedelta(days=30)
+    # Dynamically determine next migration date based on active hot->warm policy
+    hot_policy = db.query(LifecyclePolicy).filter(
+        LifecyclePolicy.source_tier == "hot",
+        LifecyclePolicy.dest_tier == "warm",
+        LifecyclePolicy.is_active == True
+    ).first()
+    days_to_add = hot_policy.duration_days if hot_policy else 30
+    next_migration = datetime.datetime.utcnow() + datetime.timedelta(days=days_to_add)
     
     db_file = File(
         owner_id=owner_id,
@@ -110,8 +116,14 @@ def update_file_backend(
         else:
             # Clear or set based on destination tier
             if new_tier == "warm":
-                # Warm tier duration: e.g. next transition to archive after 90 days from upload
-                db_file.next_migration_date = db_file.upload_date + datetime.timedelta(days=90)
+                # Warm tier duration: dynamically lookup active warm->archive policy duration
+                archive_policy = db.query(LifecyclePolicy).filter(
+                    LifecyclePolicy.source_tier == "warm",
+                    LifecyclePolicy.dest_tier == "archive",
+                    LifecyclePolicy.is_active == True
+                ).first()
+                days_to_add = archive_policy.duration_days if archive_policy else 90
+                db_file.next_migration_date = datetime.datetime.utcnow() + datetime.timedelta(days=days_to_add)
             else:
                 # Archive tier is the final destination, no further migration scheduled
                 db_file.next_migration_date = None
@@ -282,3 +294,30 @@ def create_or_update_policy(
     db.commit()
     db.refresh(policy)
     return policy
+
+def seed_policy_if_missing(
+    db: Session,
+    name: str,
+    source_tier: str,
+    dest_tier: str,
+    duration_days: float,
+    is_active: bool = True
+) -> LifecyclePolicy:
+    policy = db.query(LifecyclePolicy).filter(
+        LifecyclePolicy.source_tier == source_tier,
+        LifecyclePolicy.dest_tier == dest_tier
+    ).first()
+    
+    if not policy:
+        policy = LifecyclePolicy(
+            name=name,
+            source_tier=source_tier,
+            dest_tier=dest_tier,
+            duration_days=duration_days,
+            is_active=is_active
+        )
+        db.add(policy)
+        db.commit()
+        db.refresh(policy)
+    return policy
+

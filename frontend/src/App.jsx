@@ -47,16 +47,18 @@ const GuestRoute = ({ children }) => {
 // --- POLICY ROW COMPONENT ---
 function PolicyRow({ policy, onUpdate }) {
   const parseDuration = (days) => {
-    const totalMinutes = Math.round(days * 1440)
-    if (totalMinutes === 0) {
-      return { value: 0, unit: 'minutes' }
+    const totalSeconds = Math.round(days * 86400)
+    if (totalSeconds === 0) {
+      return { value: 0, unit: 'seconds' }
     }
-    if (totalMinutes % 1440 === 0) {
-      return { value: totalMinutes / 1440, unit: 'days' }
-    } else if (totalMinutes % 60 === 0) {
-      return { value: totalMinutes / 60, unit: 'hours' }
+    if (totalSeconds % 86400 === 0) {
+      return { value: totalSeconds / 86400, unit: 'days' }
+    } else if (totalSeconds % 3600 === 0) {
+      return { value: totalSeconds / 3600, unit: 'hours' }
+    } else if (totalSeconds % 60 === 0) {
+      return { value: totalSeconds / 60, unit: 'minutes' }
     } else {
-      return { value: totalMinutes, unit: 'minutes' }
+      return { value: totalSeconds, unit: 'seconds' }
     }
   }
 
@@ -77,7 +79,7 @@ function PolicyRow({ policy, onUpdate }) {
   const tierLabel = (tier) => {
     if (tier === 'hot') return 'Hot (MinIO)'
     if (tier === 'warm') return 'Warm (SeaweedFS)'
-    return 'Archive (Scality S3 Server)'
+    return 'Archive (Garage S3)'
   }
 
   const tierColor = (tier) => {
@@ -93,6 +95,8 @@ function PolicyRow({ policy, onUpdate }) {
       days = days / 24
     } else if (unit === 'minutes') {
       days = days / 1440
+    } else if (unit === 'seconds') {
+      days = days / 86400
     }
     await onUpdate(policy.id, days, isActive)
     setSaving(false)
@@ -107,6 +111,8 @@ function PolicyRow({ policy, onUpdate }) {
       days = days / 24
     } else if (unit === 'minutes') {
       days = days / 1440
+    } else if (unit === 'seconds') {
+      days = days / 86400
     }
     await onUpdate(policy.id, days, newActive)
   }
@@ -149,6 +155,7 @@ function PolicyRow({ policy, onUpdate }) {
               <option value="days">days</option>
               <option value="hours">hours</option>
               <option value="minutes">minutes</option>
+              <option value="seconds">seconds</option>
             </select>
             <button
               onClick={handleSave}
@@ -193,11 +200,12 @@ function LifecycleFlowchart({ policies }) {
   const warmActive = warmToArchive ? warmToArchive.is_active : true
 
   const formatDurationLabel = (days) => {
-    const totalMinutes = Math.round(days * 1440)
-    if (totalMinutes === 0) return '0d'
-    if (totalMinutes % 1440 === 0) return `${totalMinutes / 1440}d`
-    if (totalMinutes % 60 === 0) return `${totalMinutes / 60}h`
-    return `${totalMinutes}m`
+    const totalSeconds = Math.round(days * 86400)
+    if (totalSeconds === 0) return '0s'
+    if (totalSeconds % 86400 === 0) return `${totalSeconds / 86400}d`
+    if (totalSeconds % 3600 === 0) return `${totalSeconds / 3600}h`
+    if (totalSeconds % 60 === 0) return `${totalSeconds / 60}m`
+    return `${totalSeconds}s`
   }
 
   return (
@@ -254,7 +262,7 @@ function StorageTimeline({ file }) {
   
   const formatDate = (dateStr) => {
     if (!dateStr) return null
-    return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return new Date(dateStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
   }
   
   const uploadTime = formatDate(file.upload_date)
@@ -272,7 +280,7 @@ function StorageTimeline({ file }) {
         </div>
         <div>
           <h4 className="text-[11px] font-bold text-slate-200">Stored in MinIO (Hot Storage)</h4>
-          <p className="text-[9px] text-slate-500 mt-0.5">{uploadTime || 'Uploaded'}</p>
+          <p className="text-[9px] text-slate-550 mt-0.5">{uploadTime || 'Uploaded'}</p>
         </div>
       </div>
 
@@ -287,7 +295,7 @@ function StorageTimeline({ file }) {
         <div>
           <h4 className="text-[11px] font-bold text-slate-200">Migrated to SeaweedFS (Warm Storage)</h4>
           <p className="text-[9px] text-slate-550 mt-0.5">
-            {isWarm || isArchive ? (warmTime || 'Completed') : 'Scheduled (After 30 days)'}
+            {isWarm || isArchive ? (warmTime || 'Completed') : (file.next_migration_date ? `Scheduled (${formatDate(file.next_migration_date)})` : 'Scheduled (After 30 days)')}
           </p>
         </div>
       </div>
@@ -300,9 +308,9 @@ function StorageTimeline({ file }) {
           ❄
         </div>
         <div>
-          <h4 className="text-[11px] font-bold text-slate-200">Archived to Scality S3 (Archive Storage)</h4>
+          <h4 className="text-[11px] font-bold text-slate-200">Archived to Garage S3 (Archive Storage)</h4>
           <p className="text-[9px] text-slate-550 mt-0.5">
-            {isArchive ? (archiveTime || 'Completed') : 'Scheduled (After 90 days)'}
+            {isArchive ? (archiveTime || 'Completed') : (isWarm && file.next_migration_date ? `Scheduled (${formatDate(file.next_migration_date)})` : 'Scheduled (After 90 days)')}
           </p>
         </div>
       </div>
@@ -413,7 +421,6 @@ function Dashboard() {
 
   // 1b. Fetch Policies
   const fetchPolicies = async () => {
-    if (user?.role !== 'admin') return
     setLoadingPolicies(true)
     try {
       const response = await axios.get('/admin/lifecycle/policies')
@@ -427,7 +434,6 @@ function Dashboard() {
 
   // 1c. Fetch Analytics
   const fetchAnalytics = async () => {
-    if (user?.role !== 'admin') return
     setLoadingAnalytics(true)
     try {
       const response = await axios.get('/admin/analytics')
@@ -456,7 +462,6 @@ function Dashboard() {
 
   // 4. Fetch All Users (admin)
   const fetchUsers = async () => {
-    if (user?.role !== 'admin') return
     setLoadingUsers(true)
     try {
       const response = await axios.get('/admin/users')
@@ -470,7 +475,6 @@ function Dashboard() {
 
   // 5. Fetch Migration Queue (admin)
   const fetchMigrations = async () => {
-    if (user?.role !== 'admin') return
     setLoadingMigrations(true)
     try {
       const params = migrationFilter ? { status: migrationFilter } : {}
@@ -502,7 +506,7 @@ function Dashboard() {
     fetchContents()
   }, [currentFolderId])
 
-  // Initial dashboard load
+  // Initial dashboard load & Real-time Auto-Refresh Polling
   useEffect(() => {
     fetchHealth()
     fetchActivities()
@@ -510,7 +514,17 @@ function Dashboard() {
     fetchAnalytics()
     fetchUsers()
     fetchMigrations()
-  }, [])
+
+    const interval = setInterval(() => {
+      fetchContents()
+      fetchActivities()
+      fetchAnalytics()
+      fetchMigrations()
+      fetchHealth()
+    }, 2500)
+
+    return () => clearInterval(interval)
+  }, [currentFolderId])
 
   // Navigation handlers
   const handleFolderClick = (folder) => {
@@ -811,6 +825,8 @@ function Dashboard() {
       }
       fetchContents()
       fetchActivities()
+      fetchAnalytics()
+      fetchMigrations()
     } catch (err) {
       setSweepResult({
         success: false,
@@ -932,7 +948,7 @@ function Dashboard() {
     if (searchTxt && !f.name.toLowerCase().includes(searchTxt)) return false
     if (searchType && f.extension?.toLowerCase() !== searchType) return false
     
-    // Storage backend check (minio, seaweedfs, scality)
+    // Storage backend check (minio, seaweedfs, garage)
     if (searchStorage) {
       const backend = (f.current_backend || '').toLowerCase()
       if (!backend.includes(searchStorage)) return false
@@ -1258,16 +1274,15 @@ function Dashboard() {
                {/* Right Side Pane: Console Audits & Services */}
         <div className="w-full md:w-80 flex flex-col gap-6 shrink-0">
           
-          {/* Tabbed Admin Dashboard Card */}
-          {user?.role === 'admin' && (
-            <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-5 backdrop-blur-sm relative overflow-hidden flex flex-col min-h-[380px] shadow-lg">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-brand-500/5 rounded-full blur-xl pointer-events-none"></div>
-              
-              <div className="flex items-center justify-between mb-4 shrink-0 select-none">
-                <h3 className="font-outfit text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-brand-400" /> Admin Console
-                </h3>
-              </div>
+          {/* Tabbed Lifecycle & Storage Console Card */}
+          <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-5 backdrop-blur-sm relative overflow-hidden flex flex-col min-h-[380px] shadow-lg">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-brand-500/5 rounded-full blur-xl pointer-events-none"></div>
+            
+            <div className="flex items-center justify-between mb-4 shrink-0 select-none">
+              <h3 className="font-outfit text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Shield className="w-4 h-4 text-brand-400" /> Lifecycle & Storage Console
+              </h3>
+            </div>
 
               {/* Tabs Navigation */}
               <div className="flex gap-1.5 border-b border-slate-850 pb-2 mb-3.5 overflow-x-auto shrink-0 scrollbar-thin select-none">
@@ -1400,7 +1415,7 @@ function Dashboard() {
                       const tiers = [
                         { key: 'hot', label: 'MinIO (Hot)', color: 'bg-amber-500', textColor: 'text-amber-450', borderColor: 'border-amber-500/20' },
                         { key: 'warm', label: 'SeaweedFS (Warm)', color: 'bg-cyan-500', textColor: 'text-cyan-450', borderColor: 'border-cyan-500/20' },
-                        { key: 'archive', label: 'Scality (Archive)', color: 'bg-purple-500', textColor: 'text-purple-455', borderColor: 'border-purple-500/20' }
+                        { key: 'archive', label: 'Garage S3 (Archive)', color: 'bg-purple-500', textColor: 'text-purple-455', borderColor: 'border-purple-500/20' }
                       ]
                       return (
                         <div className="space-y-3.5">
@@ -1558,7 +1573,6 @@ function Dashboard() {
 
               </div>
             </div>
-          )}
 
           {/* Infrastructure Health Card */}
           <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-5 backdrop-blur-sm shadow-md">
@@ -1604,51 +1618,49 @@ function Dashboard() {
               <div className="flex items-center justify-between text-[11px] p-2 bg-slate-950/40 border border-slate-900 rounded-xl">
                 <div className="flex items-center gap-2 pr-2 min-w-0">
                   <HardDrive className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span className="font-bold text-slate-350 truncate">Scality (Archive)</span>
+                  <span className="font-bold text-slate-350 truncate">Garage S3 (Archive)</span>
                 </div>
-                {renderStatusBadge(getServiceStatus('scality'))}
+                {renderStatusBadge(getServiceStatus('garage'))}
               </div>
             </div>
           </div>
 
-          {/* User Activity Log Feed Card (visible to standard users only as admin has it in tabs) */}
-          {user?.role !== 'admin' && (
-            <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-5 backdrop-blur-sm flex flex-col max-h-[300px] shadow-md">
-              <div className="flex items-center justify-between border-b border-slate-850 pb-3 mb-3 shrink-0 select-none">
-                <h3 className="font-outfit text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Server className="w-4 h-4 text-brand-400" /> Recent Actions
-                </h3>
-                <button
-                  onClick={fetchActivities}
-                  disabled={loadingActivities}
-                  className="p-1 rounded hover:bg-slate-900 text-slate-500 hover:text-white"
-                  title="Reload Logs"
-                >
-                  <RefreshCw className={`w-3 h-3 ${loadingActivities ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 scrollbar-thin">
-                {loadingActivities ? (
-                  <div className="text-center py-6 text-[10px] font-semibold text-slate-650">Loading feed...</div>
-                ) : activities.length === 0 ? (
-                  <div className="text-center py-6 text-[10px] font-semibold text-slate-600">No actions logged yet</div>
-                ) : (
-                  activities.map(log => (
-                    <div key={log.id} className="p-2.5 rounded-xl bg-slate-950/40 border border-slate-900 text-[10px] leading-relaxed">
-                      <div className="flex items-center justify-between font-bold">
-                        <span className="text-slate-200 capitalize">{log.action.replace('_', ' ')}</span>
-                        <span className="text-slate-550 font-medium">
-                          {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-slate-450 mt-1">{log.details}</p>
-                    </div>
-                  ))
-                )}
-              </div>
+          {/* Recent Actions Feed Card */}
+          <div className="bg-slate-900/40 border border-slate-900 rounded-3xl p-5 backdrop-blur-sm flex flex-col max-h-[300px] shadow-md">
+            <div className="flex items-center justify-between border-b border-slate-850 pb-3 mb-3 shrink-0 select-none">
+              <h3 className="font-outfit text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <Server className="w-4 h-4 text-brand-400" /> Recent Actions
+              </h3>
+              <button
+                onClick={fetchActivities}
+                disabled={loadingActivities}
+                className="p-1 rounded hover:bg-slate-900 text-slate-500 hover:text-white"
+                title="Reload Logs"
+              >
+                <RefreshCw className={`w-3 h-3 ${loadingActivities ? 'animate-spin' : ''}`} />
+              </button>
             </div>
-          )}
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-0.5 scrollbar-thin">
+              {loadingActivities ? (
+                <div className="text-center py-6 text-[10px] font-semibold text-slate-650">Loading feed...</div>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-6 text-[10px] font-semibold text-slate-600">No actions logged yet</div>
+              ) : (
+                activities.map(log => (
+                  <div key={log.id} className="p-2.5 rounded-xl bg-slate-950/40 border border-slate-900 text-[10px] leading-relaxed">
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-200 capitalize">{log.action.replace('_', ' ')}</span>
+                      <span className="text-slate-550 font-medium">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-slate-450 mt-1">{log.details}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
         </div>
       </div>

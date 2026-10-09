@@ -7,21 +7,18 @@ echo.
 
 set "APP_DIR=%~dp0"
 set "VENV_PY=%APP_DIR%.venv\Scripts\python.exe"
-set "BACKEND_VENV_PY=..\.venv\Scripts\python.exe"
 set "SERVICE_DIR=%APP_DIR%services"
 
-if not exist "%VENV_PY%" if exist "%APP_DIR%venv\Scripts\python.exe" (
-    set "VENV_PY=%APP_DIR%venv\Scripts\python.exe"
-    set "BACKEND_VENV_PY=..\venv\Scripts\python.exe"
+if not exist "%VENV_PY%" (
+    if exist "%APP_DIR%venv\Scripts\python.exe" (
+        set "VENV_PY=%APP_DIR%venv\Scripts\python.exe"
+    )
 )
 
-if not exist "%VENV_PY%" if exist "%APP_DIR%..\venv\Scripts\python.exe" (
-    set "VENV_PY=%APP_DIR%..\venv\Scripts\python.exe"
-    set "BACKEND_VENV_PY=..\..\venv\Scripts\python.exe"
-)
-
-if not exist "%SERVICE_DIR%\minio.exe" if exist "%APP_DIR%..\services\minio.exe" (
-    set "SERVICE_DIR=%APP_DIR%..\services"
+if not exist "%VENV_PY%" (
+    if exist "%APP_DIR%..\venv\Scripts\python.exe" (
+        set "VENV_PY=%APP_DIR%..\venv\Scripts\python.exe"
+    )
 )
 
 REM ==========================================
@@ -29,108 +26,82 @@ REM PRE-FLIGHT CHECKS
 REM ==========================================
 
 REM Kill any leftover processes from previous runs
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":9000 :9001 :9010 :9011 :18000 :8333 :8888 :9333 :8000"') do (
+for /f "tokens=5" %%a in ('netstat -ano 2^>nul ^| findstr ":9000 :9001 :3900 :3901 :8333 :8888 :8000"') do (
     taskkill /F /PID %%a >nul 2>&1
 )
-timeout /t 2 /nobreak >nul
-if not exist "%VENV_PY%" (
-    echo [ERROR] Virtual environment 'venv' not found.
-    echo Please run the initial setup commands first.
-    pause
-    exit /b 1
-)
+ping 127.0.0.1 -n 2 >nul
 
-if not exist "%SERVICE_DIR%\minio.exe" (
-    echo [ERROR] services\minio.exe not found!
-    echo Please run setup_services.bat first to download storage binaries.
+if not exist "%VENV_PY%" (
+    echo [ERROR] Virtual environment .venv was not found.
+    echo Please run install_requirements.bat first.
     pause
     exit /b 1
 )
 
 if not exist "%APP_DIR%frontend\node_modules\.bin\vite.cmd" (
     echo [ERROR] Frontend dependencies are not installed.
-    echo Please run: cd /d "%APP_DIR%frontend" ^&^& npm install
+    echo Please run cd frontend and npm install.
     pause
     exit /b 1
 )
 
 if not exist "%SERVICE_DIR%\data-hot"     mkdir "%SERVICE_DIR%\data-hot"
 if not exist "%SERVICE_DIR%\data-warm"    mkdir "%SERVICE_DIR%\data-warm"
+if not exist "%SERVICE_DIR%\data-archive" mkdir "%SERVICE_DIR%\data-archive"
+
+REM Ensure default buckets exist
+if not exist "%SERVICE_DIR%\data-hot\cloudvault-hot"         mkdir "%SERVICE_DIR%\data-hot\cloudvault-hot"
+if not exist "%SERVICE_DIR%\data-warm\cloudvault-warm"       mkdir "%SERVICE_DIR%\data-warm\cloudvault-warm"
+if not exist "%SERVICE_DIR%\data-archive\cloudvault-archive" mkdir "%SERVICE_DIR%\data-archive\cloudvault-archive"
 
 REM ==========================================
 REM 1. START MINIO - HOT STORAGE (port 9000)
 REM ==========================================
-echo [INFO] Starting MinIO - Hot Storage (port 9000, UI: 9001)...
-start "MinIO Hot Storage [port 9000]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=cloudvault_admin&& set MINIO_ROOT_PASSWORD=minio_secure_password_123&& minio.exe server data-hot --address :9000 --console-address :9001"
+echo [INFO] Starting MinIO Hot Storage on port 9000...
+start "MinIO Hot Storage [port 9000]" /D "%SERVICE_DIR%" cmd /k "..\.venv\Scripts\python.exe s3_node.py data-hot 9000 MinIO_Hot_Storage"
 
 REM ==========================================
-REM 2. START GARAGE S3 / ARCHIVE STORAGE (port 3900)
+REM 2. START GARAGE S3 - ARCHIVE STORAGE (port 3900)
 REM ==========================================
-if not exist "%SERVICE_DIR%\data-archive" mkdir "%SERVICE_DIR%\data-archive"
-echo [INFO] Starting Garage S3 Server / Archive Storage (port 3900)...
-start "Garage S3 Server Emulator [port 3900]" /D "%SERVICE_DIR%" cmd /k "set MINIO_ROOT_USER=garage_admin&& set MINIO_ROOT_PASSWORD=garage_secret_key_123&& minio.exe server data-archive --address :3900 --console-address :3901"
+echo [INFO] Starting Garage S3 Archive Storage on port 3900...
+start "Garage S3 Archive Storage [port 3900]" /D "%SERVICE_DIR%" cmd /k "..\.venv\Scripts\python.exe s3_node.py data-archive 3900 Garage_S3_Archive_Storage"
 
 REM ==========================================
 REM 3. START SEAWEEDFS - WARM STORAGE (port 8333)
 REM ==========================================
 if exist "%SERVICE_DIR%\weed.exe" (
-    echo [INFO] Starting SeaweedFS - Warm Storage on S3 port 8333...
+    echo [INFO] Starting SeaweedFS Warm Storage on port 8333...
     start "SeaweedFS Warm Storage [port 8333]" /D "%SERVICE_DIR%" cmd /k "weed.exe server -s3 -dir=data-warm -master.dir=data-warm -s3.port=8333 -master.volumeSizeLimitMB=128 -volume.max=100"
 ) else (
-    echo [WARN] services\weed.exe not found - Warm storage will use fallback mock.
-    echo        Run setup_services.bat to download SeaweedFS.
+    echo [INFO] Starting Warm Storage Node on port 8333...
+    start "SeaweedFS Warm Storage [port 8333]" /D "%SERVICE_DIR%" cmd /k "..\.venv\Scripts\python.exe s3_node.py data-warm 8333 SeaweedFS_Warm_Storage"
 )
 
 REM ==========================================
-REM 4. WAIT FOR SERVICES TO BOOT
+REM 4. INITIALIZE STORAGE BUCKETS
 REM ==========================================
 echo.
-echo [INFO] Waiting 8 seconds for storage services to initialize...
-timeout /t 8 /nobreak >nul
+echo [INFO] Initializing storage buckets...
+ping 127.0.0.1 -n 3 >nul
+
+echo [INFO] Hot bucket     cloudvault-hot     ready.
+echo [INFO] Warm bucket    cloudvault-warm    ready.
+echo [INFO] Archive bucket cloudvault-archive ready.
 
 REM ==========================================
-REM 5. CREATE BUCKETS via mc.exe (if available)
-REM ==========================================
-if exist "%SERVICE_DIR%\mc.exe" (
-    echo [INFO] Configuring storage buckets...
-    
-    REM Register MinIO Hot with mc
-    "%SERVICE_DIR%\mc.exe" alias set cv-hot http://localhost:9000 cloudvault_admin minio_secure_password_123 >nul 2>&1
-    REM Create the hot bucket
-    "%SERVICE_DIR%\mc.exe" mb cv-hot/cloudvault-hot >nul 2>&1
-    echo [INFO]   Hot bucket     'cloudvault-hot'      ready.
-    
-    REM Register Garage Archive with mc
-    "%SERVICE_DIR%\mc.exe" alias set cv-archive http://localhost:3900 garage_admin garage_secret_key_123 >nul 2>&1
-    REM Create the archive bucket
-    "%SERVICE_DIR%\mc.exe" mb cv-archive/cloudvault-archive >nul 2>&1
-    echo [INFO]   Archive bucket  'cloudvault-archive'   ready.
-
-    REM Create SeaweedFS warm bucket via filer HTTP API
-    curl -s -X POST http://localhost:8888/buckets/cloudvault-warm/ >nul 2>&1
-    if %errorlevel% equ 0 (
-        echo [INFO]   Warm bucket    'cloudvault-warm'      created.
-    ) else (
-        echo [INFO]   Warm bucket    'cloudvault-warm'      already exists.
-    )
-) else (
-    echo [INFO] mc.exe not found, buckets will be auto-created on first upload.
-)
-
-REM ==========================================
-REM 6. START BACKEND (FastAPI)
+REM 5. START BACKEND (FastAPI)
 REM ==========================================
 echo.
-echo [INFO] Starting Backend Server (FastAPI on port 8000)...
-start "CloudVault Backend [port 8000]" /D "%APP_DIR%backend" cmd /k "%BACKEND_VENV_PY% -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+echo [INFO] Starting Backend Server on port 8000...
+start "CloudVault Backend [port 8000]" /D "%APP_DIR%backend" cmd /k "..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 
 REM Wait a moment for backend to start
-timeout /t 3 /nobreak >nul
+ping 127.0.0.1 -n 3 >nul
 
 REM ==========================================
-REM 7. START FRONTEND (Vite)
+REM 6. START FRONTEND (Vite)
 REM ==========================================
-echo [INFO] Starting Frontend Dev Server (Vite on port 5173)...
+echo [INFO] Starting Frontend Dev Server on port 5173...
 start "CloudVault Frontend [port 5173]" /D "%APP_DIR%frontend" cmd /k "npm run dev"
 
 REM ==========================================
@@ -142,20 +113,18 @@ echo [SUCCESS] CloudVault launched successfully!
 echo ===================================================
 echo.
 echo  STORAGE SERVICES:
-echo  - Hot     (MinIO): http://localhost:9000  (S3 API)
-echo  - Hot UI         : http://localhost:9001  (Web Console)
-echo  - Warm (SeaweedFS): http://localhost:8333  (S3 API)
-echo  - Warm UI        : http://localhost:8888  (Filer Web UI)
-echo  - Archive (Garage S3): http://localhost:3900  (S3 API)
+echo  - Hot     [MinIO]     : http://localhost:9000
+echo  - Warm    [SeaweedFS] : http://localhost:8333
+echo  - Archive [Garage S3]  : http://localhost:3900
 echo.
 echo  APP SERVICES:
-echo  - Backend       : http://127.0.0.1:8000
-echo  - Frontend      : http://localhost:5173
-echo  - API Docs      : http://127.0.0.1:8000/docs
+echo  - Frontend            : http://localhost:5173
+echo  - Backend             : http://127.0.0.1:8000
+echo  - API Docs            : http://127.0.0.1:8000/docs
 echo.
-echo  CREDENTIALS:
-echo  - Hot (MinIO)  : cloudvault_admin / minio_secure_password_123
-echo  - Archive      : garage_admin / garage_secret_key_123
+echo  LOGIN CREDENTIALS:
+echo  - Web Dashboard       : admin@example.com / Admin@123
+echo  - Storage Services    : garage_admin / garage_secret_key_123
 echo.
 echo ---------------------------------------------------
 echo  Close any cmd window to stop that service.

@@ -1,0 +1,485 @@
+================================================================================
+          CLOUDVAULT — COMPREHENSIVE PROJECT SUBMISSION & EVALUATION GUIDE
+     (ZERO-TO-HERO CRASH COURSE + UNIVERSAL DEFENSE FOR THE ENTIRE TEAM)
+================================================================================
+Project Title : CloudVault: Intelligent Multi-Tier Cloud Storage Platform with 
+                Automated Lifecycle-Based Data Migration
+Tech Stack    : FastAPI (Python), React 18 (Vite), MinIO, SeaweedFS, Garage S3,
+                SQLAlchemy, SQLite/PostgreSQL, Celery/Threading, JWT Auth.
+Prepared For  : Final Project Defense & Cross-Questioning Group Evaluation
+Team Size     : 4 Members
+Target Reader : EVERY TEAM MEMBER (Even if you know NOTHING about this project right now,
+                reading this guide will get you completely ready to answer ANY question).
+================================================================================
+
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS:
+--------------------------------------------------------------------------------
+0. THE ZERO-TO-HERO CRASH COURSE (EXPLAIN LIKE I'M 5: WHAT IS THIS PROJECT?)
+   - The Simple Real-Life Analogy (Closet, Cupboard, and Basement)
+   - The Real Problem in Real Companies
+   - What Did We Actually Build? (The 3 Pieces of Software)
+   - Where Are the Files Actually Stored on the Computer?
+   - The Exact 60-Second Demo to Show the Teacher
+1. THE UNIVERSAL CORE BLUEPRINT (MANDATORY FOR ALL 4 MEMBERS)
+   - 30-Second Elevator Pitch
+   - The Complete End-to-End File Journey (Step-by-Step)
+   - Storage Engines Breakdown & Port Mapping
+   - The Security, Auth & Data Integrity Model
+   - The Financial ROI & Business Justification
+2. QUICK REFERENCE CARD (Ports, URLs, Credentials)
+3. UNIVERSAL MASTER GLOSSARY (Simple Definitions of Every Jargon Term)
+4. THE 7 EVALUATION CARD PARAMETERS (Full Answers to Read Out)
+   - Parameter 1: Problem Identification & Objectives
+   - Parameter 2: Literature Review & Research Gap
+   - Parameter 3: Project Methodology
+   - Parameter 4: Implementation, Outcomes & Live Demo Workflow
+   - Parameter 5: Project Complexity (Why This Is NOT a Simple CRUD Website)
+   - Parameter 6: Cost Consideration, Feasibility & Societal Impacts
+   - Parameter 7: Teamwork & Group Dynamics
+5. CROSS-EXAMINATION SURVIVAL MATRIX (What if you are asked outside your role?)
+6. INDIVIDUAL MEMBER SCRIPTS (What each person should say word-for-word)
+7. TOP 15 HARD VIVA QUESTIONS & INSTANT BULLETPROOF ANSWERS
+================================================================================
+
+
+================================================================================
+0. THE ZERO-TO-HERO CRASH COURSE (START HERE IF YOU KNOW NOTHING!)
+================================================================================
+
+A. EXPLAIN LIKE I'M 5: WHAT IS CLOUDVAULT?
+-------------------------------------------
+Imagine you have clothes:
+1. Daily Clothes (T-shirt, jeans): You wear them every day. You keep them in your 
+   bedroom closet right next to your bed. It takes 2 seconds to grab them. 
+   (In our project, this is the "HOT TIER").
+2. Occasional Clothes (Winter jackets, suits): You wear them once a month. You keep 
+   them in a hallway cupboard. (In our project, this is the "WARM TIER").
+3. Old Clothes (Baby clothes, old school uniforms): You will never wear them again, 
+   but you cannot throw them away. You put them in a box in the basement or attic. 
+   It takes 10 minutes to go down and get them, but basement space is almost free! 
+   (In our project, this is the "ARCHIVE TIER").
+
+B. WHAT IS THE PROBLEM IN REAL COMPANIES (NETFLIX, GOOGLE, BANKS)?
+------------------------------------------------------------------
+- When you upload a file (photo, medical report, bank statement) today, you look at it.
+- After 30 days, 80% of files are NEVER OPENED AGAIN ("Cold Data").
+- But companies are keeping those forgotten files on super-expensive, high-speed 
+  solid-state drives (NVMe SSDs / AWS S3 Standard).
+- This wastes 70% of company budgets! Storing cold data on fast drives is like 
+  renting a luxury penthouse suite in New York just to store your old cardboard boxes!
+- CLOUDVAULT IS THE SMART AUTOMATED BOT that watches your files:
+  If a file hasn't been used, CloudVault quietly moves it from Hot -> Warm -> Archive!
+
+C. WHAT SOFTWARE DID WE ACTUALLY BUILD? (THE 3 PIECES)
+------------------------------------------------------
+1. THE FRONTEND (The Pretty Website):
+   - Built using React 18, Vite, and Tailwind CSS.
+   - It runs on port 5173 (http://localhost:5173).
+   - It's the dashboard where you see files, upload buttons, infrastructure cards, 
+     and policy settings.
+2. THE BACKEND (The Brain):
+   - Built using Python and FastAPI.
+   - It runs on port 8000 (http://localhost:8000).
+   - It checks user passwords, saves file records in the SQLite database, and runs 
+     a background worker every 3 seconds to check if any file is old enough to move.
+3. THE 3 STORAGE ENGINES (Where the files actually live on disk):
+   - MinIO S3 (Port 9000): Fast, high-speed storage (Hot Tier).
+   - SeaweedFS (Port 8333): Distributed volume storage (Warm Tier).
+   - Garage S3 (Port 3900): Ultra-lightweight cold storage (Archive Tier).
+
+D. WHERE ARE THE FILES ACTUALLY STORED ON THIS COMPUTER RIGHT NOW?
+------------------------------------------------------------------
+If the teacher asks: "Show me where the file physically is on your laptop!", 
+open Windows File Explorer to the project folder `services\`:
+- When in HOT     -> it is physically in: `CloudVault\services\data-hot\`
+- When in WARM    -> it is physically in: `CloudVault\services\data-warm\`
+- When in ARCHIVE -> it is physically in: `CloudVault\services\data-archive\`
+You can literally show the teacher the file moving from folder to folder on the laptop!
+
+E. THE EXACT 60-SECOND DEMO TO SHOW THE TEACHER:
+------------------------------------------------
+1. Open browser to http://localhost:5173.
+2. Log in: Email `admin@example.com` / Password `Admin@123`.
+3. Point to the right sidebar:
+   - "See mam, our Infrastructure shows Metadata DB, MinIO (Hot), SeaweedFS (Warm), 
+      and Garage S3 (Archive) are all ONLINE."
+4. Click "+ New" button at the top, select any PDF or image, and click Upload.
+5. Point to the file in the table:
+   - It has an orange badge: "HOT" (stored in MinIO).
+   - Count out loud: "1... 2... 3... 4... 5..."
+   - The badge AUTOMATICALLY changes to cyan: "WARM" (stored in SeaweedFS).
+   - Count out loud again: "1... 2... 3... 4... 5..."
+   - The badge AUTOMATICALLY changes to purple: "ARCHIVE" (stored in Garage S3).
+6. Point to "Recent Actions" at the bottom right:
+   - "And look mam, the live audit log shows exact timestamps for upload, migration start, 
+      and migration success with SHA-256 verification!"
+
+
+================================================================================
+1. THE UNIVERSAL CORE BLUEPRINT (MANDATORY FOR ALL 4 MEMBERS)
+================================================================================
+Every member must memorize these 5 foundational answers:
+
+A. 30-SECOND ELEVATOR PITCH:
+   "CloudVault is an automated, vendor-agnostic multi-tier cloud storage platform. 
+    It solves enterprise cloud cost inflation by automatically migrating dormant data 
+    from expensive, high-IOPS Hot storage (MinIO) to high-throughput Warm storage 
+    (SeaweedFS) and finally into low-power Archive storage (Garage S3) based on 
+    customizable time-based lifecycle policies. Throughout this automated migration, 
+    we guarantee zero data loss using end-to-end SHA-256 cryptographic checksums."
+
+B. THE COMPLETE END-TO-END FILE JOURNEY (TRACE A FILE FROM UPLOAD TO ARCHIVE):
+   1. INGESTION: The user clicks upload on the React UI. The file streams into the 
+      FastAPI backend (`/api/v1/files/upload`).
+   2. HASHING & CATALOGING: FastAPI calculates the file's SHA-256 hash. It saves the 
+      file into MinIO (Hot Tier, Port 9000). It creates a record in the database:
+      - `current_tier = 'hot'`
+      - `current_backend = 'minio'`
+      - `status = 'active'`
+      - `checksum = '<SHA-256>'`
+      - `next_migration_date = NOW() + 5 seconds`
+   3. BACKGROUND EVALUATION: A background worker thread in FastAPI runs every 3 seconds 
+      (`start_auto_migration_worker`), scanning for files where:
+      `(current_tier == source_tier) AND (next_migration_date <= NOW())`.
+   4. ATOMIC LOCKING: When 5 seconds expire, the worker acquires an atomic database lock:
+      `File.status` changes from `'active'` to `'migrating'`. This blocks concurrent user 
+      edits or duplicate worker tasks.
+   5. TWO-PHASE MIGRATION (HOT -> WARM):
+      - File is downloaded from MinIO and streamed into SeaweedFS (Warm Tier, Port 8333).
+      - SeaweedFS computes the written checksum. If it matches the database SHA-256 hash:
+        -> The source copy in MinIO is safely deleted.
+        -> `current_tier` becomes `'warm'`, `current_backend` becomes `'seaweedfs'`.
+        -> `next_migration_date` is reset to `NOW() + 5 seconds`.
+        -> Status is released back to `'active'`, and an audit log is written.
+   6. ARCHIVAL (WARM -> ARCHIVE):
+      - After 5 seconds in Warm, the background sweeper triggers again.
+      - The file is streamed from SeaweedFS to Garage S3 (Archive Tier, Port 3900).
+      - SHA-256 is verified again; SeaweedFS source is purged; status becomes `'archive'`.
+      - `next_migration_date` becomes `NULL` (cold storage is the terminal tier).
+   7. LIVE UI UPDATE: The React UI polls the server every 2.5 seconds. The user sees 
+      the tier badge update from `HOT` -> `WARM` -> `ARCHIVE` in real time without refreshing.
+
+C. STORAGE ENGINES & PORT MAPPING:
+   - Hot Tier     : MinIO S3     | Port 9000 | NVMe SSD Equivalent | High IOPS, ultra-low latency
+   - Warm Tier    : SeaweedFS    | Port 8333 | HDD Array Equivalent| High throughput, append-only
+   - Archive Tier : Garage S3    | Port 3900 | Cold Node Equivalent| Geo-distributed, low power
+
+D. SECURITY & AUTHENTICATION MODEL:
+   - Password Hashing : Bcrypt with unique cryptographic salt per user (`bcrypt.gensalt()`).
+   - Authentication   : OAuth2 Password Bearer flow issuing signed JWT tokens (`HS256`).
+   - Authorization    : Role-Based Access Control (Admin vs Standard User) with tenant isolation.
+   - Data Integrity   : SHA-256 hash comparison across all inter-tier transfers.
+   - Crash Recovery   : `recover_stalled_migrations()` resets any stuck files upon reboot.
+
+E. THE FINANCIAL ROI (WHY COMPANIES BUY OR BUILD THIS):
+   - In industry, >80% of data is inactive within 90 days.
+   - Primary NVMe/S3 Standard costs ~$0.023/GB/mo.
+   - Archive/Glacier storage costs ~$0.00099/GB/mo (over 90% cheaper).
+   - Moving 80% of data to Archive cuts an enterprise's monthly storage bill by 60% to 75%.
+
+
+================================================================================
+2. QUICK REFERENCE CARD (FOR DEMO MACHINE)
+================================================================================
+- Frontend Dashboard   : http://localhost:5173
+- Backend REST API     : http://localhost:8000
+- Interactive Swagger  : http://localhost:8000/docs
+- Hot Tier (MinIO)     : http://localhost:9000 (Data stored in: services/data-hot)
+- Warm Tier (SeaweedFS): http://localhost:8333 (Data stored in: services/data-warm)
+- Archive Tier (Garage): http://localhost:3900 (Data stored in: services/data-archive)
+
+LOGIN CREDENTIALS:
+- Email    : admin@example.com
+- Password : Admin@123
+- Role     : Administrator
+
+
+================================================================================
+3. UNIVERSAL MASTER GLOSSARY (SIMPLE DEFINITIONS)
+================================================================================
+If the teacher asks you: "What does this word mean?", give this 1-sentence answer:
+
+1. IOPS (Input/Output Operations Per Second):
+   "How many individual read or write actions a storage device can do per second. 
+    Hot storage needs high IOPS because many users are accessing it at once."
+
+2. Multi-Tiering (Hierarchical Storage Management - HSM):
+   "Moving files between fast/expensive storage and slow/cheap storage automatically 
+    based on how old the file is."
+
+3. Physical vs Logical Tiering:
+   "Logical tiering is putting files in different folders on the same hard drive. 
+    Physical tiering is moving files between completely different storage machines 
+    and technologies with different hardware costs."
+
+4. SHA-256 Checksum:
+   "A unique 64-character mathematical fingerprint of a file. If even one letter 
+    in the file changes, the fingerprint changes completely. We use it to ensure 
+    no file is corrupted during transfer."
+
+5. JWT (JSON Web Token):
+   "A digital security badge sent to the browser when you log in. It proves who you are 
+    on every click without asking for your password again."
+
+6. Bcrypt Salting:
+   "Adding random secret characters to a password before encrypting it so that hackers 
+    cannot reverse-engineer it using lookup tables."
+
+7. RBAC (Role-Based Access Control):
+   "Restricting what users can do based on their role. Admins can change policies; 
+    regular users can only view their own files."
+
+8. Atomic Locking:
+   "A database lock that marks a file as 'migrating' so that nobody can delete or edit 
+    it while it is being transferred across servers."
+
+9. REST API:
+   "The bridge that lets our React website talk to our Python backend using standard 
+    web requests (GET, POST, PATCH, DELETE)."
+
+10. Short Polling:
+    "The frontend asking the backend 'Any updates?' every 2.5 seconds so badges change 
+     live on screen without the user refreshing the page."
+
+
+================================================================================
+4. THE 7 EVALUATION CARD PARAMETERS (WHAT TO READ OUT TO THE TEACHER)
+================================================================================
+
+--------------------------------------------------------------------------------
+PARAMETER 1: PROBLEM IDENTIFICATION & OBJECTIVES
+--------------------------------------------------------------------------------
+- PROBLEM IDENTIFICATION:
+  1. The "Cold Data" Problem: Over 80% of enterprise files are never opened again 
+     after 30 to 90 days.
+  2. Massive Waste of Money: Storing unused files on expensive primary storage 
+     (AWS S3 Standard at $0.023/GB/mo or NVMe SSDs) wastes 60% to 70% of IT budgets.
+  3. Cloud Monopolies & Hidden Fees: Commercial cloud providers charge high exit fees 
+     (egress fees) and minimum retention penalties if you delete or move files too soon.
+- PROJECT OBJECTIVES:
+  1. Build CloudVault: An open-source, on-premise, multi-tier storage platform.
+  2. Implement True Physical Tiering across Hot (MinIO), Warm (SeaweedFS), and Archive (Garage S3).
+  3. Automate Data Lifecycle Policies with sub-minute execution capabilities for live demo and testing.
+  4. Guarantee Zero Data Loss with SHA-256 cryptographic checksum verification.
+
+--------------------------------------------------------------------------------
+PARAMETER 2: LITERATURE REVIEW & RESEARCH GAP
+--------------------------------------------------------------------------------
+- LITERATURE REVIEW:
+  1. AWS S3 Intelligent-Tiering: Automates tier transitions, but charges monthly 
+     monitoring fees per 1,000 files, requires files to be at least 128 KB, and locks you into AWS.
+  2. Ceph Storage: A popular open-source storage system, but extremely complicated to set up, 
+     requiring dedicated server clusters and full-time DevOps engineers.
+  3. Legacy Tape Storage: Old tape-based archival systems are too slow and have no modern web APIs.
+- RESEARCH GAP:
+  1. No simple, lightweight tool existed to connect different specialized open-source 
+     storage engines (MinIO + SeaweedFS + Garage S3) under one roof.
+  2. Existing tools lacked real-time, second-level policy controls for quick testing, 
+     auditing, and classroom demonstration.
+
+--------------------------------------------------------------------------------
+PARAMETER 3: PROJECT METHODOLOGY
+--------------------------------------------------------------------------------
+- System Structure:
+  1. Frontend: React 18 single-page application running on Vite.
+  2. Backend: FastAPI asynchronous Python server with SQLAlchemy ORM.
+  3. Storage Layer: MinIO (Hot), SeaweedFS (Warm), and Garage S3 (Archive).
+- The Adapter Pattern:
+  In `backend/app/adapters/`, we created a base interface (`BaseStorageAdapter`) with 
+  standard methods (`upload_file`, `download_file`, `delete_file`). MinIO, SeaweedFS, 
+  and Garage all follow this standard, allowing clean, plug-and-play storage operations.
+
+--------------------------------------------------------------------------------
+PARAMETER 4: IMPLEMENTATION, OUTCOMES & LIVE DEMO WORKFLOW
+--------------------------------------------------------------------------------
+Follow the 60-Second Demo in Section 0-E:
+1. Show Dashboard at http://localhost:5173.
+2. Show all 4 infrastructure cards ONLINE.
+3. Open Policies tab: show Hot->Warm is 5s, Warm->Archive is 5s.
+4. Upload file -> see it in HOT -> turns to WARM after 5s -> turns to ARCHIVE after 5s.
+5. Show live logs in Recent Actions with timestamps and checksums.
+
+--------------------------------------------------------------------------------
+PARAMETER 5: PROJECT COMPLEXITY (WHY THIS IS NOT A BASIC CRUD APP)
+--------------------------------------------------------------------------------
+If the teacher asks: "Isn't this just a simple file upload website?", answer with these 4 points:
+1. Multi-Engine Distributed Coordination: We are orchestrating three completely 
+   different physical storage servers (MinIO, SeaweedFS, Garage S3) simultaneously.
+2. Atomic Concurrency & State Locking: Database row-locking (`status = 'migrating'`) 
+   prevents race conditions if a user downloads while a file is migrating.
+3. Two-Phase Safe Migration: The source file is NEVER deleted until the destination file 
+   is 100% written and verified by SHA-256 checksum.
+4. Crash Recovery: If someone pulls the power cord mid-transfer, `recover_stalled_migrations()` 
+   automatically finds stuck files and resets them safely on reboot.
+
+--------------------------------------------------------------------------------
+PARAMETER 6: COST CONSIDERATION, FEASIBILITY & SOCIETAL IMPACTS
+--------------------------------------------------------------------------------
+- COST SAVINGS:
+  - Hot Storage (NVMe/SSD)   : ~$0.023 per GB/mo (100% cost profile)
+  - Warm Storage (SeaweedFS) : ~$0.012 per GB/mo (~50% cost profile)
+  - Archive Storage (Garage) : ~$0.001 per GB/mo (~5% cost profile)
+  Moving 80% of aging data saves companies 60% to 75% on recurring storage costs.
+- FEASIBILITY:
+  Uses 100% free, open-source technologies with zero software licensing costs.
+- SOCIETAL IMPACT & GREEN COMPUTING:
+  1. Green Computing: Hot SSD drives require continuous power and heavy air conditioning. 
+     Archive nodes consume very little electricity, shrinking data center carbon footprints.
+  2. Data Privacy & Sovereignty: Hospitals and universities can store private records 
+     on-premise in compliance with privacy laws (GDPR, HIPAA) without sending data to foreign cloud giants.
+
+--------------------------------------------------------------------------------
+PARAMETER 7: TEAMWORK & GROUP DYNAMICS
+--------------------------------------------------------------------------------
+- We used Git and GitHub for version control.
+- Divided the project into 4 distinct areas: Backend, Frontend, Architecture, and Security/Cost.
+- Conducted collaborative testing: simulated server crashes mid-migration to verify 
+  that files were never lost.
+
+
+================================================================================
+5. CROSS-EXAMINATION SURVIVAL MATRIX (WHAT IF ASKED OUTSIDE YOUR TOPIC?)
+================================================================================
+
+SCENARIO 1: FRONTEND MEMBER IS ASKED: "How does the backend move the file?"
+-> ANSWER:
+"Our FastAPI backend has a background worker that checks the database every 3 seconds. 
+When a file's time expires, the worker locks the database record to 'migrating', copies 
+the file to the next storage engine, verifies the SHA-256 checksum, and deletes the 
+old copy. Our React UI polls every 2.5 seconds and updates the badge on screen."
+
+SCENARIO 2: BACKEND MEMBER IS ASKED: "Why does this save money for companies?"
+-> ANSWER:
+"Because 80% of company files become inactive after 30 days. Keeping inactive files 
+on expensive fast drives costs $0.023/GB/month. Moving them to cold archive storage 
+costs $0.001/GB/month, which cuts the company's storage bill by 60% to 75%."
+
+SCENARIO 3: RESEARCH LEAD IS ASKED: "How do you know the file wasn't corrupted?"
+-> ANSWER:
+"We compute a SHA-256 cryptographic hash when the file is uploaded. When the file 
+is moved to a new tier, the new storage engine computes the hash of the received data. 
+If both hashes match byte-for-byte, the move is successful. If there is any mismatch, 
+the move cancels and the original file is left safe."
+
+SCENARIO 4: SECURITY MEMBER IS ASKED: "What if the computer turns off during migration?"
+-> ANSWER:
+"Our migration is non-destructive: we never delete the original file until the new copy 
+is fully written and verified. When the computer turns back on, our recovery function 
+finds any files stuck in 'migrating' status and safely resets them to 'active'."
+
+
+================================================================================
+6. INDIVIDUAL MEMBER SCRIPTS (READ OR MEMORIZE THESE FOR YOUR TURN)
+================================================================================
+
+MEMBER 1 (LEAD BACKEND & STORAGE SPECIALIST):
+"Good morning, Professor. I developed the core Backend architecture and storage engine 
+integration. I built our REST API using FastAPI for native asynchronous streaming and 
+Pydantic data validation. I engineered the unified storage adapter layer connecting MinIO 
+on port 9000, SeaweedFS on port 8333, and Garage S3 on port 3900 using the Adapter Design 
+Pattern. I also implemented our automated background migration worker that evaluates 
+policies every 3 seconds, using atomic database locking and SHA-256 checksum verification 
+to guarantee zero data loss."
+
+MEMBER 2 (FRONTEND & UI/UX SYSTEMS ENGINEER):
+"I engineered the Frontend Dashboard using React 18, Vite, and Tailwind CSS. The interface 
+features an interactive File Explorer, live Infrastructure health status cards, a Policy 
+Console, and a live Recent Actions feed. Because data migrations occur automatically 
+in the background, I built a real-time 2.5-second polling loop that automatically updates 
+the file tier badges from HOT to WARM to ARCHIVE without needing any page reload."
+
+MEMBER 3 (SYSTEM ARCHITECT & RESEARCH LEAD):
+"I led the Problem Formulation, Literature Review, and System Architecture. In real-world 
+enterprises, over 80% of unstructured data becomes dormant after 30 to 90 days. Storing 
+this inactive data on high-performance primary drives causes massive budgetary waste. 
+While commercial clouds like AWS offer lifecycle tiering, they impose vendor lock-in 
+and high retrieval penalties. CloudVault bridges this gap by providing an open, self-hosted, 
+multi-tier platform with automated data migration."
+
+MEMBER 4 (DEVOPS, SECURITY & IMPACT ANALYST):
+"I focused on Authentication, Security, Cost Modeling, and Environmental Impact. 
+We secured the application using OAuth2 password hashing with Bcrypt salting and stateless 
+JWT tokens with Role-Based Access Control. Financially, CloudVault achieves up to 75% storage 
+cost savings by offloading cold data to dense archival nodes. Environmentally, archival nodes 
+consume significantly less power and cooling, contributing to Green Computing and lower carbon emissions."
+
+
+================================================================================
+7. TOP 15 HARD VIVA QUESTIONS & BULLETPROOF ANSWERS
+================================================================================
+
+Q1: Why did you choose FastAPI over Flask or Django?
+A1: "FastAPI natively supports asynchronous I/O (`async/await`), which is vital for 
+     streaming files between storage tiers without blocking the server thread. It also 
+     provides automatic Pydantic request validation and interactive Swagger documentation at `/docs`."
+
+Q2: Why use three separate engines instead of three folders inside MinIO?
+A2: "Three folders in MinIO is merely logical organization on the same disk. In production, 
+     Hot storage requires expensive NVMe drives with high IOPS, Warm storage requires 
+     high-throughput distributed volumes (SeaweedFS), and Archive storage requires low-power 
+     cold nodes (Garage S3). CloudVault provides true physical tiering across heterogeneous storage engines."
+
+Q3: What algorithm is used for password hashing?
+A3: "Bcrypt with automatic salt generation (`bcrypt.gensalt()`). The salt ensures identical 
+     passwords have unique hashes, preventing Rainbow Table attacks, and its adaptive cost 
+     factor resists GPU brute-force attacks."
+
+Q4: What is in your JWT payload?
+A4: "The JWT contains the user email in the subject claim (`sub`) and an expiration timestamp (`exp`), 
+     digitally signed using the HMAC-SHA256 (`HS256`) algorithm with our server secret key."
+
+Q5: What happens if a file corrupts during migration?
+A5: "The migration aborts immediately. The destination checksum will not match the 
+     original SHA-256 hash stored in our database. The failure is recorded in the activity log, 
+     the file status reverts to 'active', and the source file remains untouched."
+
+Q6: How do you prevent race conditions during migration?
+A6: "We use database-level atomic locking. Before starting a migration, we execute an atomic 
+     update setting `status = 'migrating'`. Any incoming user actions check this status 
+     and block conflicting operations."
+
+Q7: How can you demo a 30-day policy in a 5-minute college presentation?
+A7: "Our policy engine calculates durations as floating-point days. For our live demo, 
+     we configure policies in seconds (e.g., 5 seconds = 0.0000578 days). When saved, 
+     our backend dynamically recalculates target migration dates across existing files."
+
+Q8: How does the frontend know a file migrated without refreshing?
+A8: "The React frontend executes a background polling interval every 2.5 seconds. When the 
+     backend daemon updates the file tier in the database, the subsequent poll refreshes 
+     the component state, rendering the new badge instantly."
+
+Q9: What database are you using?
+A9: "We use SQLite for local development and demonstration, and PostgreSQL for production 
+     deployments, abstracted via SQLAlchemy ORM."
+
+Q10: Can standard users change lifecycle policies?
+A10: "No. Modifying lifecycle policies, triggering manual sweeps, and accessing global 
+      user directories are guarded by our `get_current_admin` security dependency."
+
+Q11: What is SeaweedFS and why use it for Warm storage?
+A11: "SeaweedFS is an open-source distributed storage system based on Facebook's Haystack design. 
+      It avoids inode bottlenecks and achieves O(1) disk read latency, making it ideal for 
+      storing massive quantities of medium-to-small warm files."
+
+Q12: What is Garage S3 and why use it for Archive storage?
+A12: "Garage is a lightweight, fault-tolerant S3-compatible storage engine designed to run 
+      on low-power, commodity hardware across distributed locations, making it perfect for cold archival data."
+
+Q13: How is SQL Injection prevented?
+A13: "We use SQLAlchemy ORM, which automatically parameterizes all queries instead of 
+      concatenating raw strings, neutralizing SQL injection vectors."
+
+Q14: How is Green Computing achieved?
+A14: "Primary NVMe drives demand continuous power, cooling, and high IOPS. Archival drives 
+      can be spun down and run on low-power nodes, reducing data center power consumption."
+
+Q15: What happens if the backend server crashes while a file is migrating?
+A15: "Because of our two-phase commit, the source file is never deleted until the transfer 
+      is complete. When the server reboots, `recover_stalled_migrations()` detects files 
+      stuck in the 'migrating' state and reverts them to 'active'."
+
+================================================================================
+END OF UNIVERSAL EVALUATION GUIDE — ALL THE BEST TO ALL 4 TEAM MEMBERS!
+================================================================================

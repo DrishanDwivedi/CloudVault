@@ -135,16 +135,20 @@ def apply_lifecycle_policies_task() -> int:
         # Get active policies
         policies = db.query(LifecyclePolicy).filter(LifecyclePolicy.is_active == True).all()
         
+        now = datetime.datetime.utcnow()
         for policy in policies:
-            # Compute age threshold
-            # Upload date must be older than threshold to qualify for transition
-            threshold_date = datetime.datetime.utcnow() - datetime.timedelta(days=policy.duration_days)
+            # Threshold based on current policy duration
+            threshold_date = now - datetime.timedelta(days=policy.duration_days)
             
-            # Query files in matching tier that are active and exceed threshold
+            # Query files in matching tier that are active and qualify either by scheduled migration date or age threshold
             files_to_migrate = db.query(File).filter(
                 File.current_tier == policy.source_tier,
                 File.status == "active",
-                File.upload_date <= threshold_date
+                (
+                    (File.next_migration_date != None) & (File.next_migration_date <= now)
+                ) | (
+                    (File.next_migration_date == None) & (File.upload_date <= threshold_date)
+                )
             ).all()
             
             print(f"[INFO] Policy '{policy.name}' ({policy.source_tier} -> {policy.dest_tier}, age > {policy.duration_days} days): Found {len(files_to_migrate)} qualifying files.")

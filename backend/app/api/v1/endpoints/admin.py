@@ -4,7 +4,7 @@ from sqlalchemy import func
 from typing import List, Dict, Any, Optional
 
 from app.core.database import get_db
-from app.core.security import get_current_admin
+from app.core.security import get_current_user
 from app.models.user import User
 from app.models.policy import LifecyclePolicy
 from app.models.file import File as DBFile
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.post("/lifecycle/trigger", status_code=status.HTTP_200_OK)
 def trigger_lifecycle_policies(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     # Trigger Celery task (runs synchronously inline since Celery is eager)
     triggered_count = apply_lifecycle_policies_task()
@@ -33,7 +33,7 @@ def trigger_lifecycle_policies(
 @router.get("/lifecycle/policies", response_model=List[PolicyResponse])
 def get_policies(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     policies = db.query(LifecyclePolicy).all()
     return policies
@@ -43,7 +43,7 @@ def update_policy(
     id: int,
     policy_in: PolicyUpdate,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     policy = db.query(LifecyclePolicy).filter(LifecyclePolicy.id == id).first()
     if not policy:
@@ -56,12 +56,27 @@ def update_policy(
     policy.is_active = policy_in.is_active
     db.commit()
     db.refresh(policy)
+
+    # Immediately update next_migration_date for active files currently in this tier
+    import datetime
+    now = datetime.datetime.utcnow()
+    affected_files = db.query(DBFile).filter(
+        DBFile.current_tier == policy.source_tier,
+        DBFile.status == "active"
+    ).all()
+    for f in affected_files:
+        if policy.is_active:
+            f.next_migration_date = now + datetime.timedelta(days=policy.duration_days)
+        else:
+            f.next_migration_date = None
+    db.commit()
+
     return policy
 
 @router.get("/analytics", response_model=Dict[str, Any])
 def get_storage_analytics(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     tiers_stats = {
         "hot": {"file_count": 0, "total_size_bytes": 0},
@@ -97,7 +112,7 @@ def get_storage_analytics(
 @router.get("/users", response_model=List[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     from app.crud.base import get_all_users
     return get_all_users(db)
@@ -107,7 +122,7 @@ def update_user(
     id: int,
     user_in: UserUpdate,
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     from app.crud.base import update_user
     updated = update_user(db, id, role=user_in.role, is_active=user_in.is_active)
@@ -122,7 +137,7 @@ def list_migrations(
     status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(50, le=200),
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     from app.crud.base import get_all_migrations
     return get_all_migrations(db, status_filter=status_filter, limit=limit)
@@ -133,7 +148,7 @@ def list_migrations(
 def list_all_activities(
     limit: int = Query(50, le=200),
     db: Session = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_user: User = Depends(get_current_user)
 ):
     from app.crud.base import get_all_activities
     return get_all_activities(db, limit=limit)

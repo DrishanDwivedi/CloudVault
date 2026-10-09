@@ -14,7 +14,7 @@ from app.api.v1.endpoints import auth, folders, files, activities, admin
 
 # Import models so Base can detect them and generate tables
 from app.models import user, folder, file, migration, activity, policy
-from app.crud.base import create_or_update_policy
+from app.crud.base import create_or_update_policy, seed_policy_if_missing
 from app.core.security import get_password_hash
 
 # 1. Automatically create database tables on startup
@@ -27,7 +27,12 @@ def seed_default_admin():
         # Check if admin already exists
         admin_user = db.query(user.User).filter(user.User.email == "admin@example.com").first()
         if admin_user:
-            print("[INFO] Default admin user already exists, skipping seed.")
+            if admin_user.role != "admin":
+                admin_user.role = "admin"
+                db.commit()
+                print("[INFO] Default admin user role upgraded to admin.")
+            else:
+                print("[INFO] Default admin user already exists, skipping seed.")
             return
         
         # Create default admin user
@@ -53,12 +58,31 @@ def seed_default_admin():
 
 seed_default_admin()
 
-# 2. Seed Default Lifecycle Policies
+# 1.8. Automated Lifecycle Policy Background Worker
+from app.tasks.migration import apply_lifecycle_policies_task
+import threading
+
+def start_auto_migration_worker():
+    def worker():
+        time.sleep(4)
+        while True:
+            try:
+                apply_lifecycle_policies_task()
+            except Exception as e:
+                pass
+            time.sleep(3)
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+
+start_auto_migration_worker()
+
+# 2. Seed Default Lifecycle Policies (only if not already created)
 def seed_default_policies():
     db = SessionLocal()
     try:
         # Default Hot -> Warm (30 Days)
-        create_or_update_policy(
+        seed_policy_if_missing(
             db,
             name="Default Hot Storage to Warm Storage",
             source_tier="hot",
@@ -67,7 +91,7 @@ def seed_default_policies():
             is_active=True
         )
         # Default Warm -> Archive (90 Days)
-        create_or_update_policy(
+        seed_policy_if_missing(
             db,
             name="Default Warm Storage to Archive Storage",
             source_tier="warm",
@@ -75,7 +99,7 @@ def seed_default_policies():
             duration_days=90,
             is_active=True
         )
-        print("[INFO] Default lifecycle policies successfully seeded.")
+        print("[INFO] Default lifecycle policies initialized.")
     except Exception as e:
         print(f"[WARNING] Failed to seed default lifecycle policies: {str(e)}")
     finally:
